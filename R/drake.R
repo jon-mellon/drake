@@ -1,65 +1,3 @@
-library(compiler)
-setCompilerOptions(optimize=3)
-
-sapSlim <- function (X, FUN) {
-  # Sapply slim version
-  answer <- lapply(X = X, FUN = FUN)
-  answer <- s2arraySlim(answer, higher = T)
-  return(answer)
-}
-
-
-s2arraySlim <- function (x, higher = TRUE) {
-  # simplify2array slim version
-  if (length(common.len <- unique.default(lengths(x))) > 1L) 
-    return(x)
-  if (common.len == 1L) 
-    unlist(x, recursive = FALSE)
-  else if (common.len > 1L) {
-    n <- length(x)
-    r <- unlist(x, recursive = FALSE, use.names = FALSE)
-    if (higher && length(c.dim <- unique.default(lapply(x, dim))) == 
-        1 && is.numeric(c.dim <- c.dim[[1L]]) && prod(d <- c(c.dim, n)) == length(r)) {
-      iN1 <- is.null(n1 <- dimnames(x[[1L]]))
-      n2 <- names(x)
-      dnam <- if (!(iN1 && is.null(n2))) 
-        c(if (iN1) rep.int(list(n1), length(c.dim)) else n1, 
-          list(n2))
-      array(r, dim = d, dimnames = dnam)
-    }
-    else if (prod(d <- c(common.len, n)) == length(r)) 
-      array(r, dim = d, dimnames = if (!(is.null(n1 <- names(x[[1L]])) & 
-                                         is.null(n2 <- names(x)))) 
-        list(n1, n2))
-    else x
-  }
-  else x
-}
-
-
-tapSlim <- function (X, INDEX, FUN = NULL) {
-  # INDEX <- as.factor(INDEX)
-  level <- levels(INDEX)
-  namelist <- list(level)
-  INDEX <- list(INDEX)
-  nI <- 1
-  cumextent <-extent <- length(level)
-  storage.mode(cumextent) <- "integer"
-  ngroup <- cumextent
-  group <- as.integer(INDEX[[1L]])
-  levels(group) <- as.character(seq_len(ngroup))
-  class(group) <- "factor"
-  ans <- split.default(X, group)
-  names(ans) <- NULL
-  index <- as.logical(lengths(ans))
-  ans <- sapSlim(X = ans[index], FUN = FUN)
-  names(ans) <- namelist[[1]]
-  return(ans)
-}
-
-tapSlim <- cmpfun(tapSlim)
-
-
 wttabSlim <-function (x, weights = NULL,current.levels) 
 {
   result <- .Internal(rowsum_matrix(weights, as.character(x), current.levels, F, current.levels))[,1]
@@ -67,9 +5,6 @@ wttabSlim <-function (x, weights = NULL,current.levels)
   # result <- as.table.default(result)
   return(result)
 }
-
-wttabSlim <- cmpfun(wttabSlim)
-
 
 unirootSlim <- function (f, interval, lower = min(interval), upper = max(interval)) {
   f.lower = f(lower)
@@ -101,9 +36,6 @@ unirootSlim <- function (f, interval, lower = min(interval), upper = max(interva
   it <- NA_integer_
   return(val[1L])
 }
-
-unirootSlim <- cmpfun(unirootSlim)
-
 weightByMeanLinear <- function(weight, var, mean.target) {
   vw <- var * weight
   vw.sum <- sum(vw)
@@ -146,8 +78,6 @@ weightByMeanLinear <- function(weight, var, mean.target) {
   return(weight)
 }
 
-weightByMeanLinear <- cmpfun(weightByMeanLinear)
-
 weightByMean <- function(weight, var, mean.target) {
   n <- sum(!is.na(weight ))
   weight <- (weight / sum(weight, na.rm = T)) * n
@@ -183,10 +113,6 @@ weightByMean <- function(weight, var, mean.target) {
   # questionr::wtd.mean(var, weight)
   return(weight)
 }
-
-weightByMean <- cmpfun(weightByMean)
-
-
 densitySlim <- function (x, bw = 1, adjust = 1, kernel = "gaussian", weights = NULL, window = "gaussian", 
                          width, n = 512, from, to, cut = 3, na.rm = FALSE) {
   
@@ -238,8 +164,6 @@ regularizeValuesSlim <- function (x, y, ties) {
   list(x = x, y = y)
 }
 
-regularizeValuesSlim <- cmpfun(regularizeValuesSlim)
-
 approxSlim <- function (x, y = NULL, xout, n = 50) {
   method <- "linear"
   method <- pmatch(method, c("linear", "constant"))
@@ -259,12 +183,6 @@ approxSlim <- function (x, y = NULL, xout, n = 50) {
   yout <- .Call(stats:::C_Approx, x, y, xout, method, yleft, yright, f,na.rm)
   return(yout)
 }
-
-approxSlim <- cmpfun(approxSlim)
-densitySlim <- cmpfun(densitySlim)
-
-
-
 
 weightContinuousOnce <- function(data, var, con.target, dens.matches) {
   start.weights <- sum(data[, "weights"])
@@ -299,9 +217,6 @@ weightContinuousOnce <- function(data, var, con.target, dens.matches) {
   }
   return(newwt)
 }
-weightContinuousOnce <- cmpfun(weightContinuousOnce)
-
-
 weightByContinuous <- function(sample, var, con.target, 
                                max.weights = max.weights, min.weights = min.weights,
                                cap.every.var, con.supp) {
@@ -386,8 +301,6 @@ createContinuousSupplement <- function(sample, var, con.target) {
   }
   return(out)
 }
-weightByContinuous <- cmpfun(weightByContinuous)
-
 fixDiscreteOrder <- function(sample, var, discrete.targets) {
   sample.vars <- names(table(sample[, var]))
   target.vars <- names(discrete.targets[[var]])
@@ -402,8 +315,6 @@ fixDiscreteOrder <- function(sample, var, discrete.targets) {
   }
   return(discrete.targets)
 }
-fixDiscreteOrder <- cmpfun(fixDiscreteOrder)
-
 weightByDiscrete <- function(sample, var, init.weight, discrete.targets, 
                              max.weights, min.weights, cap.every.var,current.levels) {
   init.weight <- init.weight / sum(init.weight, na.rm = T)
@@ -422,9 +333,6 @@ weightByDiscrete <- function(sample, var, init.weight, discrete.targets,
   }
   return(init.weight)
 }
-
-weightByDiscrete <- cmpfun(weightByDiscrete)
-
 drake <- function(sample, continuous.targets, discrete.targets,
                   mean.targets = NULL,
                   max.weights = 25, min.weights = 1/max.weights,
@@ -587,16 +495,12 @@ drake <- function(sample, continuous.targets, discrete.targets,
   return(output.weights)
 }
 
-drake <- cmpfun(drake)
-
 weightEfficiency <- function(final.weights, initial.weights) {
   initial.weights[is.na(final.weights)] <- NA
   efficiency <- ((sum(initial.weights * final.weights, na.rm = T)^2) * 100) / 
     (sum(initial.weights, na.rm = T) * sum(initial.weights* final.weights^2, na.rm = T))  
   return(efficiency)
 }
-
-weightEfficiency <- cmpfun(weightEfficiency)
 
 checkOneContinuous <- function(data, var, con.target, weights) {
   data[, weights] <- data[, weights] / sum(data[, weights])
@@ -612,9 +516,6 @@ checkOneContinuous <- function(data, var, con.target, weights) {
   
   return(total.diff)
 }
-
-checkOneContinuous <- cmpfun(checkOneContinuous)
-
 checkContinuous <- function(sample, var, con.target, weights, debug = F) {
   if(debug) {
     browser()
@@ -641,8 +542,6 @@ checkContinuous <- function(sample, var, con.target, weights, debug = F) {
   return(total.diff)
 }
 
-checkContinuous <- cmpfun(checkContinuous)
-
 checkDiscrete <- function(discrete.targets, sample, weights) {
   by.weight <- as.list(rep(NA, length(weights)))
   names(by.weight) <- weights
@@ -662,5 +561,3 @@ checkDiscrete <- function(discrete.targets, sample, weights) {
   
   return(vals)
 }
-
-checkDiscrete <- cmpfun(checkDiscrete)

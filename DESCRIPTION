@@ -9,3 +9,5 @@ Description: Implementation of the density raking procedure for surveys
 License: What license is it under?
 RoxygenNote: 7.1.0
 ByteCompile: true
+LinkingTo: Rcpp
+Imports: Rcpp

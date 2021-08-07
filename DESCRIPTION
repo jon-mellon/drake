@@ -1,0 +1,10 @@
+Package: drake
+Type: Package
+Title: High Speed Density raking 
+Version: 1.0
+Date: 2015-04-10
+Author: Jonathan Mellon 
+Maintainer: Who to complain to <jonathan.mellon@manchester.ac.uk>
+Description: Implementation of the density raking procedure for surveys
+License: What license is it under?
+RoxygenNote: 7.1.0

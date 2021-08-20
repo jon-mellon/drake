@@ -1,12 +1,12 @@
 #' Drake main function
-drake <- function(sample, continuous.targets, discrete.targets,
+drake <- function(sample, continuous.targets = NULL, discrete.targets,
                   mean.targets = NULL,
                   max.weights = 25, min.weights = 1/max.weights,
                   maxit = 1000, initial.weights = rep(1, nrow(sample)), 
                   max.discrete.diff = 0.0005, max.mean.diff = 0.001,
                   max.con.diff = 0.01,
                   subset = rep(T, nrow(sample)), 
-                  debug = F, cap.every.var = F) {
+                  debug = F, cap.every.var = F, check.convergence.every = 100) {
   if(debug) {
     browser()
   }
@@ -45,13 +45,21 @@ drake <- function(sample, continuous.targets, discrete.targets,
     discrete.targets <- fixDiscreteOrder(sample, var, discrete.targets)  
   }
   
-  
   weight.change <- 1
   ii <- 1
   sample[, "weights"] <- sample[, "weights"] / sum(sample[, "weights"], na.rm = T)
   current.discrete.diff <- max.discrete.diff + 1
-  current.con.diff <- max.con.diff + 1
-  current.mean.diff <- max.mean.diff + 1
+  if(!is.null(continuous.targets)) {
+    current.con.diff <- max.con.diff + 1  
+  } else {
+    current.con.diff <- 0
+  }
+  
+  if(!is.null(mean.targets)) {
+    current.mean.diff <- max.mean.diff + 1
+  } else {
+    current.mean.diff <- 0
+  }
   max.wt <- max.weights / nrow(sample)
   min.wt <- min.weights / nrow(sample)
   discrete.levels <- list()
@@ -74,8 +82,6 @@ drake <- function(sample, continuous.targets, discrete.targets,
                                con.target = continuous.targets[[var]])
     
   }
-  
-  
   
   while(ii < maxit & ((current.discrete.diff>max.discrete.diff) |
                       (current.con.diff>max.con.diff) | 
@@ -111,14 +117,15 @@ drake <- function(sample, continuous.targets, discrete.targets,
                                             var = sample[, var], 
                                             meantarget = mean.targets[[var]])
     }
-    sample[, "weights"] <- prop.table(sample[, "weights"])
+    sample[, "weights"] <- prop.table(sample[, "weights"]) 
+    
     sample[, "weights"][sample[, "weights"] > (max.wt)] <- max.wt
     sample[, "weights"][sample[, "weights"] < (min.wt)] <- min.wt
     
     
     
     
-    if(length(continuous.targets)!=0 & ((ii / 100)==round(ii/100)))  {
+    if(length(continuous.targets)!=0 & ((ii / check.convergence.every)==round(ii/check.convergence.every)))  {
       current.con.diff <- rep(NA, length(names(continuous.targets)))
       names(current.con.diff) <- names(continuous.targets)
       for(con.t in names(continuous.targets)) {
@@ -131,7 +138,7 @@ drake <- function(sample, continuous.targets, discrete.targets,
       current.con.diff <- 0
     }
     
-    if(length(discrete.targets)!=0 & ((ii / 100)==round(ii/100)))  {
+    if(length(discrete.targets)!=0 & ((ii / check.convergence.every)==round(ii/check.convergence.every)))  {
       current.values <- lapply(names(discrete.targets),
                                function(x) wttabSlim(sample[, x], weights = sample[, "weights"],
                                                      current.levels = discrete.levels[[x]]))

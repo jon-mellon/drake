@@ -1,5 +1,6 @@
 #' Drake main function
 drake <- function(sample, continuous.targets = NULL, discrete.targets,
+                  discrete.target.subset = NULL,
                   mean.targets = NULL,
                   max.weights = 25, min.weights = 1/max.weights,
                   maxit = 1000, initial.weights = rep(1, nrow(sample)), 
@@ -24,10 +25,11 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   var.names.discrete <- names(discrete.targets)
   var.names.cont2 <-  unlist(lapply(continuous.targets, function(x) names(x)) ) 
   var.names.mean <- names(mean.targets)
+  var.names.discrete.sub <- names(discrete.target.subset)
   if(any(var.names.cont2 %in% c("data.name", "bw"))) {
     var.names.cont2 <- NULL
   }
-  var.names.comb <- c(var.names.cont, var.names.discrete, var.names.cont2,var.names.mean,  "unique.id")
+  var.names.comb <- unique(c(var.names.cont, var.names.discrete,var.names.discrete.sub,  var.names.cont2,var.names.mean,  "unique.id"))
   
   initial.weights[initial.weights==0] <- NA
   
@@ -63,13 +65,28 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   max.wt <- max.weights / nrow(sample)
   min.wt <- min.weights / nrow(sample)
   discrete.levels <- list()
-  for(var in names(discrete.targets)) {
+  
+  discrete.vars <- names(discrete.targets)
+  if(!is.null(discrete.target.subset)) {
+    dts.names <- names(discrete.target.subset)
+    dts.names <- c(dts.names, sapply(dts.names, function(x) names(discrete.target.subset[[x]])))
+    discrete.vars <- unique(c(discrete.vars, dts.names))
+  }
+  
+  
+  for(var in discrete.vars) {
     if(is.numeric(sample[, var])) {
       sample[, var] <- factor(as.character(sample[, var]), 
                               levels = unique(sample[, var])[order(unique(sample[, var]))])
     }
-    if(is.character(sample[, var])) {
-      sample[, var] <- factor(sample[, var], levels = names(discrete.targets[[var]]))
+    
+    
+    if(is.null(names(discrete.targets[[var]]))) {
+      sample[, var] <- factor(sample[, var], levels = unique(unlist(lapply(discrete.target.subset[[var]][[1]], names))))
+    } else {
+      if(is.character(sample[, var])) {
+        sample[, var] <- factor(sample[, var], levels = names(discrete.targets[[var]]))
+      }
     }
     discrete.levels[[var]] <- levels(sample[, var])
   }
@@ -79,7 +96,7 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   for(var in names(continuous.targets)) {
     continuous.supplement[[var]]  <- createContinuousSupplement(sample = sample, 
                                                                 var = var, 
-                               con.target = continuous.targets[[var]])
+                                                                con.target = continuous.targets[[var]])
     
   }
   
@@ -96,26 +113,32 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
     
     for(var in names(continuous.targets)) {
       sample[, "weights"] <- weightByContinuous(var = var, sample = sample, 
-                                           con.target = continuous.targets[[var]], 
-                                           max.weights = max.weights, 
-                                           min.weights = min.weights, 
-                                           cap.every.var = cap.every.var,
-                                           con.supp = continuous.supplement[[var]])
+                                                con.target = continuous.targets[[var]], 
+                                                max.weights = max.weights, 
+                                                min.weights = min.weights, 
+                                                cap.every.var = cap.every.var,
+                                                con.supp = continuous.supplement[[var]])
+    }
+    for(var in names(discrete.target.subset)) {
+      sample[, "weights"] <- weightByDiscreteSubset(sample = sample, var = var, discrete.sub = discrete.target.subset[[var]], 
+                                                    max.weights = max.weights, min.weights = min.weights,
+                                                    cap.every.var = cap.every.var, 
+                                                    current.levels = discrete.levels[[var]])
     }
     
     for(var in names(discrete.targets)) {
       sample[, "weights"] <- weightByDiscrete(var = var, sample = sample, 
-                                         init.weight = as.vector(sample[, "weights"]),
-                                         discrete.targets= discrete.targets, 
-                                         max.weights = max.weights, 
-                                         min.weights = min.weights, 
-                                         cap.every.var = cap.every.var,
-                                         current.levels = discrete.levels[[var]])
+                                              init.weight = as.vector(sample[, "weights"]),
+                                              discrete.targets= discrete.targets, 
+                                              max.weights = max.weights, 
+                                              min.weights = min.weights, 
+                                              cap.every.var = cap.every.var,
+                                              current.levels = discrete.levels[[var]])
     }
     for(var in names(mean.targets)) {
       sample[, "weights"] <-  CWeightByMeanLinear(weight = sample[, "weights"], 
-                                            var = sample[, var], 
-                                            meantarget = mean.targets[[var]])
+                                                  var = sample[, var], 
+                                                  meantarget = mean.targets[[var]])
     }
     sample[, "weights"] <- prop.table(sample[, "weights"]) 
     

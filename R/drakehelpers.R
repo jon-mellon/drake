@@ -401,3 +401,40 @@ weightEfficiency <- function(final.weights, initial.weights) {
     (sum(initial.weights, na.rm = T) * sum(initial.weights* final.weights^2, na.rm = T))  
   return(efficiency)
 }
+
+
+weightByDiscreteSubset <- function(sample, var, discrete.sub, 
+                                   max.weights = max.weights, min.weights = min.weights,
+                                   cap.every.var, current.levels) {
+  wt.out <- rep(NA, nrow(sample))
+  stratify.var <- names(discrete.sub)
+  stratify.values <- names(discrete.sub[[stratify.var]])
+  stratify.values <- stratify.values[!is.na(stratify.values)]
+  if(!all(sample[, stratify.var] %in% stratify.values)) {
+    stop(paste0("For stratified draking, values in ", stratify.var, "not in targets:",
+                unique(sample[, stratify.var][!sample[, stratify.var] %in% stratify.values])))
+  }
+  for(kk in stratify.values) {
+    sample.temp <- sample[sample[, stratify.var]==kk, ]
+    tmp.wts <- sample.temp[, "weights"]
+    tot.weight <- sum(tmp.wts)
+    temp.target <- list(discrete.sub[[stratify.var]][[kk]])
+    names(temp.target) <- var
+    tmp.wts <- weightByDiscrete(sample = sample.temp, var = var, 
+                                init.weight =  tmp.wts,
+                                discrete.targets = temp.target,
+                                max.weights = max.weights, 
+                                min.weights = min.weights, 
+                                current.levels = current.levels, 
+                                cap.every.var = FALSE)
+    tmp.wts <- (tmp.wts / sum(tmp.wts)) * tot.weight
+    
+    weight.replace <- tmp.wts[match(sample[, "unique.id"], sample.temp[, "unique.id"])]
+    wt.out[!is.na(weight.replace)] <- weight.replace[!is.na(weight.replace)]
+  }
+  if(cap.every.var) {
+    wt.out[wt.out>max.weights] <- max.weights
+    wt.out[wt.out<min.weights] <- min.weights  
+  }
+  return(wt.out)
+}

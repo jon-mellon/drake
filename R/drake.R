@@ -140,10 +140,17 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
                                                   var = sample[, var], 
                                                   meantarget = mean.targets[[var]])
     }
-    sample[, "weights"] <- prop.table(sample[, "weights"]) 
     
-    sample[, "weights"][sample[, "weights"] > (max.wt)] <- max.wt
-    sample[, "weights"][sample[, "weights"] < (min.wt)] <- min.wt
+    tot.wt <- sum(sample[, "weights"])
+    tot.obs <- nrow(sample)
+    mult <- tot.obs/ tot.wt
+    sample[, "weights"] <- sample[, "weights"] * mult
+    sample[, "weights"][sample[, "weights"] > (max.weights)] <- max.weights
+    sample[, "weights"][sample[, "weights"] < (min.weights)] <- min.weights
+    
+    # sample[, "weights"] <- prop.table(sample[, "weights"]) 
+    # sample[, "weights"][sample[, "weights"] > (max.wt)] <- max.wt
+    # sample[, "weights"][sample[, "weights"] < (min.wt)] <- min.wt
     
     
     
@@ -151,10 +158,11 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
     if(length(continuous.targets)!=0 & ((ii / check.convergence.every)==round(ii/check.convergence.every)))  {
       current.con.diff <- rep(NA, length(names(continuous.targets)))
       names(current.con.diff) <- names(continuous.targets)
+      sample[, "weightprop"] <- prop.table(sample[, "weights"])
       for(con.t in names(continuous.targets)) {
         current.con.diff[con.t] <- checkContinuous(sample = sample, var = con.t, 
                                                    con.target = continuous.targets[[con.t]], 
-                                                   weights = "weights", debug = F)
+                                                   weights = "weightprop", debug = F)
       }
       current.con.diff <- max(current.con.diff)
     } else {

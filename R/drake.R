@@ -49,7 +49,10 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   
   weight.change <- 1
   ii <- 1
-  sample[, "weights"] <- sample[, "weights"] / sum(sample[, "weights"], na.rm = T)
+  
+  
+  sample[, "weights"] <- sample[, "weights"] * nrow(sample) / sum(sample[, "weights"]) 
+  # sample[, "weights"] <- sample[, "weights"] / sum(sample[, "weights"], na.rm = T)
   current.discrete.diff <- max.discrete.diff + 1
   if(!is.null(continuous.targets)) {
     current.con.diff <- max.con.diff + 1  
@@ -100,6 +103,8 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
     
   }
   
+  tot.obs <- nrow(sample)
+  
   while(ii < maxit & ((current.discrete.diff>max.discrete.diff) |
                       (current.con.diff>max.con.diff) | 
                       current.mean.diff > max.mean.diff )  ) {
@@ -142,7 +147,7 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
     }
     
     tot.wt <- sum(sample[, "weights"])
-    tot.obs <- nrow(sample)
+    
     mult <- tot.obs/ tot.wt
     sample[, "weights"] <- sample[, "weights"] * mult
     sample[, "weights"][sample[, "weights"] > (max.weights)] <- max.weights

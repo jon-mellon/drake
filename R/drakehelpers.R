@@ -185,8 +185,8 @@ approxSlim <- function (x, y = NULL, xout, n = 50) {
 }
 
 weightContinuousOnce <- function(data, var, con.target, dens.matches) {
-  start.weights <- sum(data[, "weights"])
-  data[, "weights"] <- data[, "weights"] / start.weights
+  # start.weights <- sum(data[, "weights"])
+  # data[, "weights"] <- data[, "weights"] / start.weights
   
   sample.density <- densitySlim(x = data[, var], n = length(con.target$x), 
                                 from = min(con.target$x), 

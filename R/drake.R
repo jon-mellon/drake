@@ -170,9 +170,14 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
     }
     
     if(length(discrete.targets)!=0 & ((ii / check.convergence.every)==round(ii/check.convergence.every)))  {
+      # current.values <- lapply(names(discrete.targets),
+      #                          function(x) wttabSlim(sample[, x], weights = sample[, "weights"],
+      #                                                current.levels = discrete.levels[[x]]))
+      
+      # temporary slow version:
       current.values <- lapply(names(discrete.targets),
-                               function(x) wttabSlim(sample[, x], weights = sample[, "weights"],
-                                                     current.levels = discrete.levels[[x]]))
+                               function(x) 
+                                 prop.table(questionr::wtd.table(sample[, x], weights = sample[, "weights"])))
       
       if(!is.null(discrete.targets)) {
         current.discrete.diff <- max(mapply(function(x,y) max(abs(x-y)), 

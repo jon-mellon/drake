@@ -318,7 +318,7 @@ fixDiscreteOrder <- function(sample, var, discrete.targets) {
 weightByDiscrete <- function(sample, var, init.weight, discrete.targets, 
                              max.weights, min.weights, cap.every.var,current.levels)
 {
-  init.weight <- init.weight / sum(init.weight, na.rm = T)
+  # init.weight <- init.weight / sum(init.weight, na.rm = T)
   wt.table <- wttabSlim(x = sample[, var], weights = init.weight, current.levels = current.levels)
   wt.table <- prop.table(wt.table)
   ratios <- discrete.targets[[var]] / wt.table

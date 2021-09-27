@@ -77,6 +77,10 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   }
   
   
+  if(any(!discrete.vars %in% colnames(sample))) {
+    stop("Discrete var targets not in data: ", paste(discrete.vars[!discrete.vars %in% colnames(sample)], collapse = ";"))
+  }
+  
   for(var in discrete.vars) {
     if(is.numeric(sample[, var])) {
       sample[, var] <- factor(as.character(sample[, var]), 

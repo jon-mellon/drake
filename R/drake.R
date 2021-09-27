@@ -26,10 +26,11 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   var.names.cont2 <-  unlist(lapply(continuous.targets, function(x) names(x)) ) 
   var.names.mean <- names(mean.targets)
   var.names.discrete.sub <- names(discrete.target.subset)
+  
   if(any(var.names.cont2 %in% c("data.name", "bw"))) {
     var.names.cont2 <- NULL
   }
-  var.names.comb <- unique(c(var.names.cont, var.names.discrete,var.names.discrete.sub,  var.names.cont2,var.names.mean,  "unique.id"))
+  var.names.comb <- unique(c(var.names.cont, var.names.discrete,  var.names.cont2,var.names.mean,  "unique.id"))
   
   initial.weights[initial.weights==0] <- NA
   
@@ -37,6 +38,19 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   sample[, "weights"] <- initial.weights
   
   valid.cases <- complete.cases(sample[, var.names.comb, drop = F]) & subset & !is.na(sample[, "weights"])
+  valid.cases2 <- rep(T, nrow(sample))
+  
+  
+  for(kk in var.names.discrete.sub)   {
+    strata <- names(discrete.target.subset[[kk]])
+    for(strt in strata) {
+      strt.parts <- names(discrete.target.subset[[kk]][[strt]])
+      for(str.single in strt.parts) {
+        valid.cases2[sample[, strt]==str.single & is.na(sample[, kk])] <- FALSE
+      }
+    }
+  }
+  valid.cases <- valid.cases & valid.cases2
   
   sample <- sample[valid.cases, ]
   initial.weights <- as.vector(initial.weights[valid.cases])

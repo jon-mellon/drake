@@ -410,10 +410,10 @@ weightByDiscreteSubset <- function(sample, var, discrete.sub,
   stratify.var <- names(discrete.sub)
   stratify.values <- names(discrete.sub[[stratify.var]])
   stratify.values <- stratify.values[!is.na(stratify.values)]
-  if(!all(sample[, stratify.var] %in% stratify.values)) {
-    stop(paste0("For stratified draking, values in ", stratify.var, "not in targets:",
-                unique(sample[, stratify.var][!sample[, stratify.var] %in% stratify.values])))
-  }
+  # if(!all(sample[, stratify.var] %in% stratify.values)) {
+  #   stop(paste0("While in ", var, " for stratified draking, values in ", stratify.var, "not in targets:",
+  #               unique(sample[, stratify.var][!sample[, stratify.var] %in% stratify.values])))
+  # }
   for(kk in stratify.values) {
     sample.temp <- sample[sample[, stratify.var]==kk, ]
     tmp.wts <- sample.temp[, "weights"]
@@ -432,6 +432,9 @@ weightByDiscreteSubset <- function(sample, var, discrete.sub,
     weight.replace <- tmp.wts[match(sample[, "unique.id"], sample.temp[, "unique.id"])]
     wt.out[!is.na(weight.replace)] <- weight.replace[!is.na(weight.replace)]
   }
+  
+  wt.out[is.na(wt.out)] <- sample[is.na(wt.out), "weights"]
+
   if(cap.every.var) {
     wt.out[wt.out>max.weights] <- max.weights
     wt.out[wt.out<min.weights] <- min.weights  

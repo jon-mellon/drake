@@ -34,7 +34,7 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   
   initial.weights[initial.weights==0] <- NA
   
-  sample <- sample[, var.names.comb, drop = F]
+  sample <- sample[, c(var.names.comb, var.names.discrete.sub), drop = F]
   sample[, "weights"] <- initial.weights
   
   valid.cases <- complete.cases(sample[, var.names.comb, drop = F]) & subset & !is.na(sample[, "weights"])

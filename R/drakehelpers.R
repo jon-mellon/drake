@@ -389,13 +389,13 @@ checkContinuous <- function(sample, var, con.target, weights, debug = F) {
     stratify.var <- names(con.target)
     total.diff <- 0
     for(strat in stratify.var) {
-      stratify.values <- names(con.target[[stratify.var]])
+      stratify.values <- names(con.target[[strat]])
       diffs <- rep(NA, length(stratify.values))
       names(diffs) <- stratify.values
       for(kk in stratify.values) {
         diffs[kk] <- checkOneContinuous(data = sample[sample[, stratify.var]==kk, ], 
                                         var = var,
-                                        con.target = con.target[[stratify.var]][[kk]], 
+                                        con.target = con.target[[strat]][[kk]], 
                                         weights = weights)
       }
       if(max(diffs)>total.diff) {

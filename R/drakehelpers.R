@@ -220,6 +220,7 @@ weightContinuousOnce <- function(data, var, con.target, dens.matches) {
 weightByContinuous <- function(sample, var, con.target, 
                                max.weights = max.weights, min.weights = min.weights,
                                cap.every.var, con.supp) {
+  wt.init <- sample[, "weights"]
   if(class(con.target)=="density") {
     wt.out <- weightContinuousOnce(data = sample, var, con.target, dens.matches = con.supp[[var]])
   } else {
@@ -249,10 +250,13 @@ weightByContinuous <- function(sample, var, con.target,
       wt.out[!is.na(weight.replace)] <- weight.replace[!is.na(weight.replace)]
     }
   }
+  wt.out[is.na(wt.out)] <- wt.init[is.na(wt.out)]
+  
   if(cap.every.var) {
     wt.out[wt.out>max.weights] <- max.weights
     wt.out[wt.out<min.weights] <- min.weights  
   }
+  
   return(wt.out)
 }
 

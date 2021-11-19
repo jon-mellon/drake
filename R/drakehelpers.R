@@ -441,3 +441,6 @@ weightByDiscreteSubset <- function(sample, var, discrete.sub,
   }
   return(wt.out)
 }
+
+
+

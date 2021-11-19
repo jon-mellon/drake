@@ -226,31 +226,34 @@ weightByContinuous <- function(sample, var, con.target,
   } else {
     wt.out <- rep(NA, nrow(sample))
     stratify.var <- names(con.target)
-    stratify.values <- names(con.target[[stratify.var]])
-    stratify.values <- stratify.values[!is.na(stratify.values)]
-    if(!all(sample[, stratify.var] %in% stratify.values)) {
-      warning(paste0("For stratified draking, values in ", stratify.var, "not in targets:",
-                  unique(sample[, stratify.var][!sample[, stratify.var] %in% stratify.values])))
+    for(strat in stratify.var) {
+      stratify.values <- names(con.target[[strat]])
+      stratify.values <- stratify.values[!is.na(stratify.values)]
+      if(!all(sample[, strat] %in% stratify.values)) {
+        warning(paste0("For stratified draking, values in ", strat, "not in targets: ",
+                       unique(sample[, strat][!sample[, strat] %in% stratify.values])))
+      }
+      if(!all(stratify.values %in% sample[, strat])) {
+        stop(paste0("For stratified draking, values in ", strat, "not in sample: ",
+                    unique(stratify.values[!stratify.values %in% sample[, strat]])))
+      }
+      for(kk in stratify.values) {
+        sample.temp <- sample[sample[, strat]==kk, ]
+        tmp.wts <- sample.temp[, "weights"]
+        tot.weight <- sum(tmp.wts)
+        
+        tmp.wts <- weightContinuousOnce(data = sample.temp, var = var, 
+                                        con.target = con.target[[strat]][[kk]],
+                                        dens.matches = con.supp[[strat]][[kk]])
+        tmp.wts <- (tmp.wts / sum(tmp.wts)) * tot.weight
+        
+        weight.replace <- tmp.wts[match(sample[, "unique.id"], sample.temp[, "unique.id"])]
+        wt.out[!is.na(weight.replace)] <- weight.replace[!is.na(weight.replace)]
+      }
     }
-    if(!all(stratify.values %in% sample[, stratify.var])) {
-      stop(paste0("For stratified draking, values in ", stratify.var, "not in sample:",
-                     unique(stratify.values[!stratify.values %in% sample[, stratify.var]])))
+    wt.out[is.na(wt.out)] <- wt.init[is.na(wt.out)]
+    
     }
-    for(kk in stratify.values) {
-      sample.temp <- sample[sample[, stratify.var]==kk, ]
-      tmp.wts <- sample.temp[, "weights"]
-      tot.weight <- sum(tmp.wts)
-      
-      tmp.wts <- weightContinuousOnce(data = sample.temp, var = var, 
-                                      con.target = con.target[[stratify.var]][[kk]],
-                                      dens.matches = con.supp[[stratify.var]][[kk]])
-      tmp.wts <- (tmp.wts / sum(tmp.wts)) * tot.weight
-      
-      weight.replace <- tmp.wts[match(sample[, "unique.id"], sample.temp[, "unique.id"])]
-      wt.out[!is.na(weight.replace)] <- weight.replace[!is.na(weight.replace)]
-    }
-  }
-  wt.out[is.na(wt.out)] <- wt.init[is.na(wt.out)]
   
   if(cap.every.var) {
     wt.out[wt.out>max.weights] <- max.weights
@@ -277,35 +280,49 @@ createContinuousSupplement <- function(sample, var, con.target) {
     out <- list(dens.matches)
     names(out) <- var
   } else {
-    out <- list(list())
+    out <- list()
     
-    wt.out <- rep(NA, nrow(sample))
+    # wt.out <- rep(NA, nrow(sample))
     stratify.var <- names(con.target)
-    names(out) <- stratify.var
+    for(strat in stratify.var) {
+      out[[strat]] <- list()
+    }
     
-    stratify.values <- names(con.target[[stratify.var]])
-    stratify.values <- stratify.values[!is.na(stratify.values)]
-    if(!all(sample[, stratify.var] %in% stratify.values)) {
-      warning(paste0("For stratified draking, values in ", stratify.var, "not in targets: ",
-                  unique(sample[, stratify.var][!sample[, stratify.var] %in% stratify.values])))
+    strat.vals <- list()
+    for(strat in stratify.var) {
+      strat.vals[[strat]] <- names(con.target[[strat]])
+      if(!all(sample[, strat] %in%  strat.vals[[strat]])) {
+        warning(paste0("For stratified draking, values in ", stratify.var, "not in targets: ",
+                       unique(sample[, strat][!sample[, strat] %in% strat.vals[[strat]]])))
+      }
+      strat.vals[[strat]] <- strat.vals[[strat]][!is.na(strat.vals[[strat]])]
     }
-    for(kk in stratify.values) {
-      sample.temp <- sample[sample[, stratify.var]==kk, ]
-      tmp.wts <- sample.temp[, "weights"]
-      tot.weight <- sum(tmp.wts)
+    
+    # stratify.values <- names(con.target[[stratify.var]])
+    # stratify.values <- stratify.values[!is.na(stratify.values)]
+    
+    for(strat in stratify.var) {
       
-      testdensity <- densitySlim(x = sample.temp[, var], n = length(con.target[[stratify.var]][[kk]]$x), 
-                                 from = min(con.target[[stratify.var]][[kk]]$x), 
-                                 to = max(con.target[[stratify.var]][[kk]]$x), 
-                                 weights = sample[, "weights"], bw = con.target[[stratify.var]][[kk]]$bw)
-      unique.vals <- unique.default(sample.temp[, var])
-      
-      dens.matches <- vapply(unique.vals, function(x)
-        which.min(abs(testdensity$x - x)), 1)
-      attributes(dens.matches)$charmatches <- match(as.character(sample.temp[, var]), unique.vals)
-      
-      out[[stratify.var]][[kk]] <- dens.matches
+      for(kk in strat.vals[[strat]] ) {
+        sample.temp <- sample[sample[, strat]==kk, ]
+        tmp.wts <- sample.temp[, "weights"]
+        tot.weight <- sum(tmp.wts)
+        
+        testdensity <- densitySlim(x = sample.temp[, var], n = length(con.target[[strat]][[kk]]$x), 
+                                   from = min(con.target[[strat]][[kk]]$x), 
+                                   to = max(con.target[[strat]][[kk]]$x), 
+                                   weights = sample[, "weights"], bw = con.target[[strat]][[kk]]$bw)
+        unique.vals <- unique.default(sample.temp[, var])
+        
+        dens.matches <- vapply(unique.vals, function(x)
+          which.min(abs(testdensity$x - x)), 1)
+        attributes(dens.matches)$charmatches <- match(as.character(sample.temp[, var]), unique.vals)
+        
+        out[[strat]][[kk]] <- dens.matches
+      }
     }
+    
+   
   }
   return(out)
 }

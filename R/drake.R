@@ -93,7 +93,8 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   
   
   if(any(!discrete.vars %in% colnames(sample))) {
-    stop("Discrete var targets not in data: ", paste(discrete.vars[!discrete.vars %in% colnames(sample)], collapse = ";"))
+    stop("Discrete var targets not in data: ", 
+         paste(discrete.vars[!discrete.vars %in% colnames(sample)], collapse = ";"))
   }
   
   for(var in discrete.vars) {
@@ -144,7 +145,8 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
                                                 con.supp = continuous.supplement[[var]])
     }
     for(var in names(discrete.target.subset)) {
-      sample[, "weights"] <- weightByDiscreteSubset(sample = sample, var = var, discrete.sub = discrete.target.subset[[var]], 
+      sample[, "weights"] <- weightByDiscreteSubset(sample = sample, var = var, 
+                                                    discrete.sub = discrete.target.subset[[var]], 
                                                     max.weights = max.weights, min.weights = min.weights,
                                                     cap.every.var = cap.every.var, 
                                                     current.levels = discrete.levels[[var]])

@@ -228,8 +228,12 @@ weightByContinuous <- function(sample, var, con.target,
     stratify.values <- names(con.target[[stratify.var]])
     stratify.values <- stratify.values[!is.na(stratify.values)]
     if(!all(sample[, stratify.var] %in% stratify.values)) {
-      stop(paste0("For stratified draking, values in ", stratify.var, "not in targets:",
+      warning(paste0("For stratified draking, values in ", stratify.var, "not in targets:",
                   unique(sample[, stratify.var][!sample[, stratify.var] %in% stratify.values])))
+    }
+    if(!all(stratify.values %in% sample[, stratify.var])) {
+      stop(paste0("For stratified draking, values in ", stratify.var, "not in sample:",
+                     unique(stratify.values[!stratify.values %in% sample[, stratify.var]])))
     }
     for(kk in stratify.values) {
       sample.temp <- sample[sample[, stratify.var]==kk, ]

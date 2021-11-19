@@ -67,7 +67,7 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   
   
   sample[, "weights"] <- sample[, "weights"] * nrow(sample) / sum(sample[, "weights"]) 
-  # sample[, "weights"] <- sample[, "weights"] / sum(sample[, "weights"], na.rm = T)
+  
   current.discrete.diff <- max.discrete.diff + 1
   if(!is.null(continuous.targets)) {
     current.con.diff <- max.con.diff + 1  
@@ -90,7 +90,6 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
     dts.names <- c(dts.names, sapply(dts.names, function(x) names(discrete.target.subset[[x]])))
     discrete.vars <- unique(c(discrete.vars, dts.names))
   }
-  
   
   if(any(!discrete.vars %in% colnames(sample))) {
     stop("Discrete var targets not in data: ", 

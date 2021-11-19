@@ -282,7 +282,7 @@ createContinuousSupplement <- function(sample, var, con.target) {
     stratify.values <- names(con.target[[stratify.var]])
     stratify.values <- stratify.values[!is.na(stratify.values)]
     if(!all(sample[, stratify.var] %in% stratify.values)) {
-      stop(paste0("For stratified draking, values in ", stratify.var, "not in targets:",
+      warning(paste0("For stratified draking, values in ", stratify.var, "not in targets: ",
                   unique(sample[, stratify.var][!sample[, stratify.var] %in% stratify.values])))
     }
     for(kk in stratify.values) {

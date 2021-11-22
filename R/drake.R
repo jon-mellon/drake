@@ -8,13 +8,15 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
                   max.mean.diff = 0.001,
                   max.con.diff = 0.01,
                   subset = rep(T, nrow(sample)), 
-                  debug = F, cap.every.var = F, check.convergence.every = 100) {
+                  debug = F, 
+                  cap.every.var = F, 
+                  check.convergence.every = 100) {
   if(debug) {
     browser()
   }
   tot.weights <- sapply(discrete.targets, sum)
   if(any(tot.weights>1.0001)) {
-    stop("Following targets sum to more than 1: ", paste(names(which(tot.weights>1.00001)), collapse = ", "))
+    stop("Following targets sum to more than 1: ", paste(names(which(tot.weights>1.0001)), collapse = ", "))
   }
   
   require(mellonMisc)
@@ -38,7 +40,8 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   sample <- sample[, c(var.names.comb, var.names.discrete.sub), drop = F]
   sample[, "weights"] <- initial.weights
   
-  valid.cases <- complete.cases(sample[, var.names.comb, drop = F]) & subset & !is.na(sample[, "weights"])
+  valid.cases <- complete.cases(sample[, var.names.comb, drop = F]) & 
+    subset & !is.na(sample[, "weights"])
   valid.cases2 <- rep(T, nrow(sample))
   
   
@@ -211,7 +214,6 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
         current.discrete.diff <- 0
       }
     }
-    
   }
   if(maxit==ii) {
     warning("Maximum iterations reached without convergence.")

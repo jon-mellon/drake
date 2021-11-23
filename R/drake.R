@@ -241,7 +241,7 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
     warning(low.weight.props["TRUE"]*100, "% of weights are close to lower weight limit")
   }
   if(high.weight.props["TRUE"]>0.01) {
-    warning(low.weight.props["TRUE"]*100, "% of weights are close to lower weight limit")
+    warning(low.weight.props["TRUE"]*100, "% of weights are close to higher weight limit")
   }
   
   

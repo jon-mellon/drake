@@ -131,9 +131,6 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
                       (current.con.diff>max.con.diff) | 
                       current.mean.diff > max.mean.diff )  ) {
     
-    if((ii / 10)==round(ii/10)) {
-      # print(ii)
-    }
     ii <- ii + 1
     start.weights <- sample[, "weights"]
     
@@ -146,6 +143,7 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
                                                 cap.every.var = cap.every.var,
                                                 con.supp = continuous.supplement[[var]])
     }
+
     for(var in names(discrete.target.subset)) {
       sample[, "weights"] <- weightByDiscreteSubset(sample = sample, var = var, 
                                                     discrete.sub = discrete.target.subset[[var]], 
@@ -153,7 +151,7 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
                                                     cap.every.var = cap.every.var, 
                                                     current.levels = discrete.levels[[var]])
     }
-    
+
     for(var in names(discrete.targets)) {
       sample[, "weights"] <- weightByDiscrete(var = var, sample = sample, 
                                               init.weight = as.vector(sample[, "weights"]),
@@ -163,6 +161,7 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
                                               cap.every.var = cap.every.var,
                                               current.levels = discrete.levels[[var]])
     }
+    
     for(var in names(mean.targets)) {
       sample[, "weights"] <-  CWeightByMeanLinear(weight = sample[, "weights"], 
                                                   var = sample[, var], 
@@ -228,6 +227,24 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   final.weights <- as.vector(final.weights)
   
   output.weights <- final.weights[match(sample.bk[, "unique.id"], sample[, "unique.id"])]
+  
+  high.weight.props <- prop.table(table((output.weights / max.weights) > 0.98))
+  low.weight.props <- prop.table(table((output.weights / min.weights) < 1.02))
+  
+  if(is.na(high.weight.props["TRUE"])){
+    high.weight.props["TRUE"] <- 0
+  }
+  if(is.na(low.weight.props["TRUE"])){
+    low.weight.props["TRUE"] <- 0
+  }
+  if(low.weight.props["TRUE"]>0.01) {
+    warning(low.weight.props["TRUE"]*100, "% of weights are close to lower weight limit")
+  }
+  if(high.weight.props["TRUE"]>0.01) {
+    warning(low.weight.props["TRUE"]*100, "% of weights are close to lower weight limit")
+  }
+  
+  
   return(output.weights)
 }
 

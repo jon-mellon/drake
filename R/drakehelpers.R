@@ -474,3 +474,26 @@ weightByDiscreteSubset <- function(sample, var, discrete.sub,
 
 
 
+calc_efficiency <- function(x, base = 1) {
+  # taken from cchoe/numerator  package
+  # x = weights
+  # base = 1
+  Pj <- rep(base, length(x))
+  Rj <- x
+  PjRj <- Pj*Rj
+  PjRj.sq <- PjRj^2
+  
+  Pj.Sigm <- sum(Pj)
+  Rj.Sigm <- sum(Rj)
+  PjRj.Sigm <- sum(PjRj)
+  PjRj.sq.Sigm <- sum(PjRj.sq)
+  
+  weight.index <- (PjRj.Sigm * Pj.Sigm) / Rj.Sigm
+  weight.index.sq <- PjRj.sq.Sigm * ((Pj.Sigm / Rj.Sigm)^2)
+  
+  out <- 100 * (weight.index^2) / (weight.index.sq * Pj.Sigm)
+  
+  return(out)
+}
+
+

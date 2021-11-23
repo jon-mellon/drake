@@ -10,7 +10,8 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
                   subset = rep(T, nrow(sample)), 
                   debug = F, 
                   cap.every.var = F, 
-                  check.convergence.every = 100) {
+                  check.convergence.every = 100, 
+                  extreme.weight.warning = 0.01) {
   if(debug) {
     browser()
   }
@@ -237,14 +238,12 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   if(is.na(low.weight.props["TRUE"])){
     low.weight.props["TRUE"] <- 0
   }
-  if(low.weight.props["TRUE"]>0.01) {
+  if(low.weight.props["TRUE"]>extreme.weight.warning) {
     warning(low.weight.props["TRUE"]*100, "% of weights are close to lower weight limit")
   }
-  if(high.weight.props["TRUE"]>0.01) {
+  if(high.weight.props["TRUE"]>extreme.weight.warning) {
     warning(low.weight.props["TRUE"]*100, "% of weights are close to higher weight limit")
   }
-  
-  
   return(output.weights)
 }
 

@@ -497,3 +497,25 @@ calc_efficiency <- function(x, base = 1) {
 }
 
 
+
+ageDensityUNWPP <- function(year, country, min.age,
+                            max.age, data.age.vec, pops,
+                            bw.mult = 2) {
+  pop.temp <- pops[pops$country==country & pops$Time==year, ]
+  pop.temp   <- pop.temp[pop.temp$AgeGrp>=min.age, ]
+  pop.temp$AgeGrp <- pop.temp$AgeGrp 
+  data.age.vec <- data.age.vec 
+  data.age.vec[which(data.age.vec >= max.age)] <- max.age
+  
+  source.dens <- density(na.omit(data.age.vec))
+  source.bw <- source.dens$bw
+  bw.to.use <- bw.mult * source.bw
+  pop.temp$PopTotal <- pop.temp$PopTotal * 1000
+  
+  
+  ages.pop <- inverse.rle(list(lengths = round(pop.temp$PopTotal), values = pop.temp$AgeGrp))
+  ages.pop[ages.pop>=max.age] <- max.age
+  ages.pop <- ages.pop + runif(length(ages.pop))
+  target.density <- density(ages.pop, bw = bw.to.use)
+  return(target.density)
+}

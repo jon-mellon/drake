@@ -1,7 +1,7 @@
 
 calculateMortality2 <- function(data, country, elec.gap, 
                                 suffix, elec1.year, 
-                                debug = F, hmd.user, hmd.pw, mort.countries, noisy) {
+                                debug = F, hmd.user, hmd.pw, mort.countries, noisy = F) {
   if(debug) {
     browser()
   }

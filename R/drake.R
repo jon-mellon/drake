@@ -144,7 +144,7 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
                                                 cap.every.var = cap.every.var,
                                                 con.supp = continuous.supplement[[var]])
     }
-
+    
     for(var in names(discrete.target.subset)) {
       sample[, "weights"] <- weightByDiscreteSubset(sample = sample, var = var, 
                                                     discrete.sub = discrete.target.subset[[var]], 
@@ -152,7 +152,7 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
                                                     cap.every.var = cap.every.var, 
                                                     current.levels = discrete.levels[[var]])
     }
-
+    
     for(var in names(discrete.targets)) {
       sample[, "weights"] <- weightByDiscrete(var = var, sample = sample, 
                                               init.weight = as.vector(sample[, "weights"]),

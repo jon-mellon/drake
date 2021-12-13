@@ -11,7 +11,13 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
                   debug = F, 
                   cap.every.var = F, 
                   check.convergence.every = 100, 
-                  extreme.weight.warning = 0.01) {
+                  extreme.weight.warning = 0.01, 
+                  RR = NULL, 
+                  selection.weights = FALSE) {
+  if(!is.null(RR) & selection.weights) {
+    min.cap <- TRUE
+  }
+    
   if(debug) {
     browser()
   }
@@ -70,7 +76,9 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   ii <- 1
   
   
-  sample[, "weights"] <- sample[, "weights"] * nrow(sample) / sum(sample[, "weights"]) 
+  sample[, "weights"] <- (sample[, "weights"] * nrow(sample)) / sum(sample[, "weights"]) 
+  
+  selection.weights <- sample[, "weights"]
   
   current.discrete.diff <- max.discrete.diff + 1
   if(!is.null(continuous.targets)) {
@@ -173,6 +181,24 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
     
     mult <- tot.obs/ tot.wt
     sample[, "weights"] <- sample[, "weights"] * mult
+    
+    
+    if(min.cap) {
+      ratio <- sample[, "weights"] / selection.weights
+      ratio.bar <- mean(ratio)
+      ratio.star <- ratio / ratio.bar
+      too.low <- ratio.star<RR
+      ratio.star[too.low] <- RR
+      ratio.corrected <- ratio.star  * ratio.bar
+      weights.corrected <- ratio.corrected  * selection.weights
+      total.weight.added <- sum(weights.corrected - sample[, "weights"])
+      other.weight.sum <- sum(sample[!too.low, "weights"])
+      corrected.other.weight.sum <- other.weight.sum - total.weight.added
+      other.weight.correction <- corrected.other.weight.sum / other.weight.sum
+      sample[!too.low, "weights"] <- sample[!too.low, "weights"] * other.weight.correction
+      sample[too.low, "weights"] <- weights.corrected[too.low]
+    }
+    
     sample[, "weights"][sample[, "weights"] > (max.weights)] <- max.weights
     sample[, "weights"][sample[, "weights"] < (min.weights)] <- min.weights
     

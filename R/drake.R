@@ -16,6 +16,8 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
                   selection.weights = FALSE) {
   if(!is.null(RR) & selection.weights) {
     min.cap <- TRUE
+  } else {
+    min.cap <- FALSE
   }
     
   if(debug) {

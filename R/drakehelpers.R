@@ -393,7 +393,7 @@ checkContinuous <- function(sample, var, con.target, weights, debug = F) {
       diffs <- rep(NA, length(stratify.values))
       names(diffs) <- stratify.values
       for(kk in stratify.values) {
-        diffs[kk] <- checkOneContinuous(data = sample[sample[, strat]==kk, ], 
+        diffs[kk] <- checkOneContinuous(data = sample[which(sample[, strat]==kk), ], 
                                         var = var,
                                         con.target = con.target[[strat]][[kk]], 
                                         weights = weights)

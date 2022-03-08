@@ -398,7 +398,7 @@ checkContinuous <- function(sample, var, con.target, weights, debug = F) {
                                         con.target = con.target[[strat]][[kk]], 
                                         weights = weights)
       }
-      if(max(diffs)>total.diff) {
+      if(max(diffs, na.rm = T)>total.diff) {
         total.diff <- max(diffs)  
       }
     }

@@ -3,7 +3,6 @@
 Review scope: static inspection of the current codebase only (no execution or tests).
 
 **High**
-- `approxSlim()` uses an undefined `na.rm` symbol and will error when called. This function is used by `densitySlim()`, so continuous raking can fail at runtime. `R/drakehelpers.R`
 - `ageDensityUNWPP()` constructs a full-population age vector by repeating each person. For real populations this can be tens of millions of entries and can exhaust memory. `R/drakehelpers.R`
 
 **Medium**
@@ -24,6 +23,7 @@ Review scope: static inspection of the current codebase only (no execution or te
 - `calcAgeDensity2()` uses rounding to allocate `survey.n`, so the synthetic age vector length may not equal `survey.n` exactly. `R/calcAgeDensity2.R`
 - The country mapping includes `IL = "ISL"`, which appears to map Israel to Iceland’s HMD code. If unintentional, this yields incorrect mortality lookups. `R/getMortCountries.R`
 - `densitySlim()` passes weights to `stats:::C_BinDist` without explicit validation. If `weights` is `NULL` or length-mismatched, this will error. `R/drakehelpers.R`
+- `drakeClose()` prints the current max weight each iteration, which can be noisy in batch runs or tests. `R/drakeIdeal.R`
 
 **Info**
 - Compiled artifacts (`src/*.o`, `src/*.dll`) are tracked in the repo. These can cause portability issues across platforms and stale binaries during development. `src/`

@@ -1,8 +1,13 @@
-getExpectedMortality <- function(country, date1, date2, min.age, pops = popBySingleYear(),
-                                 hmd.user, hmd.pw, 
-                                 noisy = F) {
+getExpectedMortality <- function(country, date1, date2, min.age,
+                                 pops = NULL,
+                                 hmd.user, hmd.pw,
+                                 noisy = FALSE) {
+  pop_country <- if (country == "NIR") "GB" else country
+  if(is.null(pops)) {
+    pops <- popBySingleYear(country = pop_country)
+  }
   pop.temp <- pops[which(pops$Time==lubridate::year(date1) & 
-                           pops$country==country & 
+                           pops$country==pop_country & 
                            pops$AgeGrp>=min.age), ]
   pop.temp$age <- pop.temp$AgeGrp
   pop.temp$gender <- "Male"

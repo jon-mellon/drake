@@ -1,13 +1,28 @@
 Package: drake
 Type: Package
-Title: High Speed Density raking 
-Version: 1.0
+Title: High-Speed Density Raking
+Version: 1.0.0
 Date: 2015-04-10
-Author: Jonathan Mellon 
-Maintainer: Who to complain to <jonathan.mellon@manchester.ac.uk>
-Description: Implementation of the density raking procedure for surveys
-License: What license is it under?
+Authors@R: c(
+    person("Jonathan", "Mellon", email = "jonathan.mellon@manchester.ac.uk",
+           role = c("aut", "cre"))
+  )
+Description: Implements density raking for survey weighting with discrete,
+    continuous, and mean targets, including optional stratified continuous
+    targets and mortality-derived adjustments.
+License: MIT + file LICENSE
 RoxygenNote: 7.1.0
 ByteCompile: true
 LinkingTo: Rcpp
-Imports: Rcpp
+Imports:
+    Rcpp,
+    HMDHFDplus,
+    countrycode,
+    lubridate,
+    mellonMisc,
+    questionr,
+    tidywpp
+Encoding: UTF-8
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

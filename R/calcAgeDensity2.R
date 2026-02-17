@@ -3,11 +3,14 @@ calcAgeDensity2 <- function(country,
                             bw.mult, 
                             min.age = 18,
                             max.age = 80, 
-                            pops = popBySingleYear(),
+                            pops = NULL,
                             survey.n = 3000) {
   year <- lubridate::year(date)
   if(country=="NIR") {
     country <- "GB"
+  }
+  if(is.null(pops)) {
+    pops <- popBySingleYear(country = country)
   }
   age.current <- pops[which(pops$country==country & pops$Time==year), ]
   age.current <- age.current[which(age.current$AgeGrp>=min.age), ]

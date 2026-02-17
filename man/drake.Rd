@@ -2,12 +2,13 @@
 % Please edit documentation in R/drake.R
 \name{drake}
 \alias{drake}
-\title{Drake main function}
+\title{Density raking with discrete, continuous, and mean targets}
 \usage{
 drake(
   sample,
-  continuous.targets,
+  continuous.targets = NULL,
   discrete.targets,
+  discrete.target.subset = NULL,
   mean.targets = NULL,
   max.weights = 25,
   min.weights = 1/max.weights,
@@ -16,11 +17,90 @@ drake(
   max.discrete.diff = 5e-04,
   max.mean.diff = 0.001,
   max.con.diff = 0.01,
-  subset = rep(T, nrow(sample)),
-  debug = F,
-  cap.every.var = F
+  subset = rep(TRUE, nrow(sample)),
+  debug = FALSE,
+  cap.every.var = FALSE,
+  check.convergence.every = 100,
+  extreme.weight.warning = 0.01,
+  RR = NULL,
+  selection.weights = FALSE
 )
 }
 \description{
-Drake main function
+Adjusts survey weights so the weighted sample matches discrete proportions,
+continuous density targets, and/or mean targets. This is the primary entry
+point for the density raking (drake) algorithm.
+}
+\details{
+The raking loop proceeds in a fixed sequence: continuous targets, discrete
+subset targets, discrete targets, and mean targets. After each full pass
+weights are re-scaled to sum to the number of valid rows and optionally capped.
+Convergence is checked every \code{check.convergence.every} iterations using
+maximum absolute differences between targets and current weighted margins.
+
+Continuous targets are matched using kernel density ratios with a cached
+nearest-grid mapping for speed. Mean targets are adjusted using a monotone
+transformation solved by a C++ root-finder.
+}
+\arguments{
+\item{sample}{A data frame containing variables referenced by targets.}
+\item{continuous.targets}{Optional list of continuous targets. Each element is
+ either a \code{density} object or a nested list of \code{density} objects
+ indexed by a stratifying variable.}
+\item{discrete.targets}{Named list of numeric vectors giving target
+ proportions for discrete variables. Each vector must be named with target
+ levels and sum to 1 (or slightly less due to rounding).}
+\item{discrete.target.subset}{Optional list specifying discrete targets within
+ a stratum. Structure: \code{list(target_var = list(strata_var =
+ list(level = c(target_level = proportion, ...), ...)))}.}
+\item{mean.targets}{Optional named list of target means for numeric variables.}
+\item{max.weights}{Maximum allowed weight value (applied after each pass).}
+\item{min.weights}{Minimum allowed weight value (applied after each pass).}
+\item{maxit}{Maximum number of iterations.}
+\item{initial.weights}{Optional initial weights (length \code{nrow(sample)}).}
+\item{max.discrete.diff}{Convergence threshold for discrete targets.}
+\item{max.mean.diff}{Convergence threshold for mean targets.}
+\item{max.con.diff}{Convergence threshold for continuous targets.}
+\item{subset}{Logical vector indicating which rows are eligible for raking.
+ Non-eligible rows return \code{NA} weights.}
+\item{debug}{If \code{TRUE}, enter the debugger at the start.}
+\item{cap.every.var}{If \code{TRUE}, applies weight caps after each variable.}
+\item{check.convergence.every}{Frequency (iterations) to recompute convergence
+ diagnostics.}
+\item{extreme.weight.warning}{Proportion threshold for warnings when weights
+ approach caps.}
+\item{RR}{Optional lower bound for the ratio of final weights to
+ \code{selection.weights}. Used only when \code{selection.weights} is
+ \code{TRUE}.}
+\item{selection.weights}{If \code{TRUE}, uses the initial weights as a
+ baseline and enforces the \code{RR} lower bound on the weight ratio.}
+}
+\value{
+A numeric vector of final weights aligned to the original \code{sample} order.
+}
+\examples{
+set.seed(1)
+
+n <- 500
+sample <- data.frame(
+  age = rnorm(n, 45, 12),
+  gender = sample(c("M", "F"), n, replace = TRUE),
+  region = sample(c("North", "South"), n, replace = TRUE)
+)
+
+continuous.targets <- list(
+  age = density(rnorm(5000, 44, 10))
+)
+
+discrete.targets <- list(
+  gender = c(M = 0.48, F = 0.52),
+  region = c(North = 0.4, South = 0.6)
+)
+
+weights <- drake(sample, continuous.targets, discrete.targets, maxit = 50)
+round(prop.table(tapply(weights, sample$gender, sum)), 3)
+round(prop.table(tapply(weights, sample$region, sum)), 3)
+}
+\seealso{
+\code{\link{checkContinuous}}, \code{\link{rakeTable}}
 }

@@ -7,19 +7,19 @@ calcPropNewEligUN2 <- function(country, prev.date, current.date,
   if(country=="NIR") {
     country <- "GB"
   }
-  yearcurrent <- year(current.date)
+  yearcurrent <- lubridate::year(current.date)
   
   age.current <- pops[which(pops$country==country & pops$Time==yearcurrent), ]
   age.current <- age.current[which(age.current$AgeGrp>=min.age.current), ]
   
   age.current$AgeGrp <- age.current$AgeGrp + 0.999
-  age.current <- age.current %>% mellonMisc::slct(AgeGrp, PopTotal)
+  age.current <- mellonMisc::slct(age.current, AgeGrp, PopTotal)
   
   if(any(duplicated(age.current))) {
     stop("Weird duplicate issue")
   }
   
-  age.current <- rbind(dtf(AgeGrp = min.age.current, PopTotal = 0), age.current)
+  age.current <- rbind(mellonMisc::dtf(AgeGrp = min.age.current, PopTotal = 0), age.current)
   age.current$cumelig <- cumsum(age.current$PopTotal)
   age.current$years.elig <- age.current$AgeGrp - min.age.current
   elig.time <- elec.gap + (min.age.prev - min.age.current) 

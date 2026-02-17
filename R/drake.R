@@ -1,20 +1,97 @@
-#' Drake main function
+#' Density raking with discrete, continuous, and mean targets
+#'
+#' @description
+#' Adjusts survey weights so the weighted sample matches a set of
+#' discrete proportions, continuous density targets, and/or mean targets.
+#' This is the primary entry point for the density raking (drake) algorithm.
+#'
+#' @details
+#' The algorithm iteratively re-weights the sample in a fixed sequence:
+#'
+#' 1. Continuous targets: weights are adjusted by the ratio of target
+#'    densities to the current weighted density (kernel density estimate).
+#'    A cached index mapping is used to avoid repeated nearest-neighbor
+#'    searches on the density grid.
+#' 2. Discrete subset targets: discrete margins that apply within a
+#'    stratifying variable are adjusted next.
+#' 3. Discrete targets: standard raking against marginal proportions.
+#' 4. Mean targets: a monotone weight adjustment is solved using a
+#'    root-finding routine (C++ implementation for speed).
+#'
+#' After each full pass, weights are re-scaled to sum to the number of
+#' valid rows. Optional capping constrains extreme weights. Convergence is
+#' checked every \code{check.convergence.every} iterations by comparing
+#' current weighted margins/densities to targets.
+#'
+#' @param sample A data frame containing the variables referenced by targets.
+#' @param continuous.targets Optional list of continuous targets. Each element
+#'   is either a \code{density} object or a nested list of \code{density}
+#'   objects indexed by a stratifying variable.
+#' @param discrete.targets Named list of numeric vectors giving target
+#'   proportions for discrete variables. Each vector must be named with the
+#'   target levels and sum to 1 (or slightly less due to rounding).
+#' @param discrete.target.subset Optional list specifying discrete targets
+#'   within a stratum. Structure: \code{list(target_var = list(strata_var =
+#'   list(level = c(target_level = proportion, ...), ...)))}.
+#' @param mean.targets Optional named list of target means for numeric
+#'   variables.
+#' @param max.weights Maximum allowed weight value (applied after each pass).
+#' @param min.weights Minimum allowed weight value (applied after each pass).
+#' @param maxit Maximum number of iterations.
+#' @param initial.weights Optional initial weights (length \code{nrow(sample)}).
+#' @param max.discrete.diff Convergence threshold for discrete targets.
+#' @param max.mean.diff Convergence threshold for mean targets.
+#' @param max.con.diff Convergence threshold for continuous targets.
+#' @param subset Logical vector indicating which rows are eligible for raking.
+#'   Non-eligible rows return \code{NA} weights.
+#' @param debug If \code{TRUE}, enter the debugger at the start.
+#' @param cap.every.var If \code{TRUE}, applies weight caps after each variable.
+#' @param check.convergence.every Frequency (iterations) to recompute
+#'   convergence diagnostics.
+#' @param extreme.weight.warning Proportion threshold for warnings when weights
+#'   approach caps.
+#' @param RR Optional lower bound for the ratio of final weights to
+#'   \code{selection.weights}. Used only when \code{selection.weights} is
+#'   \code{TRUE}.
+#' @param selection.weights If \code{TRUE}, uses the initial weights as a
+#'   baseline and enforces the \code{RR} lower bound on the weight ratio.
+#'
+#' @return A numeric vector of final weights aligned to the original
+#'   \code{sample} order.
+#' @examples
+#' set.seed(1)
+#' n <- 500
+#' sample <- data.frame(
+#'   age = rnorm(n, 45, 12),
+#'   gender = sample(c("M", "F"), n, replace = TRUE),
+#'   region = sample(c("North", "South"), n, replace = TRUE)
+#' )
+#' continuous.targets <- list(
+#'   age = density(rnorm(5000, 44, 10))
+#' )
+#' discrete.targets <- list(
+#'   gender = c(M = 0.48, F = 0.52),
+#'   region = c(North = 0.4, South = 0.6)
+#' )
+#' w <- drake(sample, continuous.targets, discrete.targets, maxit = 50)
+#' round(prop.table(tapply(w, sample$gender, sum)), 3)
+#' @export
 drake <- function(sample, continuous.targets = NULL, discrete.targets,
                   discrete.target.subset = NULL,
                   mean.targets = NULL,
                   max.weights = 25, min.weights = 1/max.weights,
-                  maxit = 1000, initial.weights = rep(1, nrow(sample)), 
-                  max.discrete.diff = 0.0005, 
+                  maxit = 1000, initial.weights = rep(1, nrow(sample)),
+                  max.discrete.diff = 0.0005,
                   max.mean.diff = 0.001,
                   max.con.diff = 0.01,
-                  subset = rep(T, nrow(sample)), 
-                  debug = F, 
-                  cap.every.var = F, 
-                  check.convergence.every = 100, 
-                  extreme.weight.warning = 0.01, 
-                  RR = NULL, 
+                  subset = rep(TRUE, nrow(sample)),
+                  debug = FALSE,
+                  cap.every.var = FALSE,
+                  check.convergence.every = 100,
+                  extreme.weight.warning = 0.01,
+                  RR = NULL,
                   selection.weights = FALSE) {
-  if(!is.null(RR) & selection.weights) {
+  if(!is.null(RR) && selection.weights) {
     min.cap <- TRUE
   } else {
     min.cap <- FALSE
@@ -28,8 +105,7 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
     stop("Following targets sum to more than 1: ", paste(names(which(tot.weights>1.0001)), collapse = ", "))
   }
   
-  require(mellonMisc)
-  sample <- dtf(sample)
+  sample <- mellonMisc::dtf(sample)
   sample[, "unique.id"] <- 1:nrow(sample)
   sample.bk <- sample
   
@@ -46,12 +122,12 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   
   initial.weights[initial.weights==0] <- NA
   
-  sample <- sample[, c(var.names.comb, var.names.discrete.sub), drop = F]
+  sample <- sample[, c(var.names.comb, var.names.discrete.sub), drop = FALSE]
   sample[, "weights"] <- initial.weights
   
-  valid.cases <- complete.cases(sample[, var.names.comb, drop = F]) & 
+  valid.cases <- complete.cases(sample[, var.names.comb, drop = FALSE]) &
     subset & !is.na(sample[, "weights"])
-  valid.cases2 <- rep(T, nrow(sample))
+  valid.cases2 <- rep(TRUE, nrow(sample))
   
   
   for(kk in var.names.discrete.sub)   {
@@ -69,7 +145,6 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   initial.weights <- as.vector(initial.weights[valid.cases])
   
   
-  require(questionr)
   for(var in names(discrete.targets)) {
     discrete.targets <- fixDiscreteOrder(sample, var, discrete.targets)  
   }
@@ -211,21 +286,23 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
     
     
     
-    if(length(continuous.targets)!=0 & ((ii / check.convergence.every)==round(ii/check.convergence.every)))  {
+    if(length(continuous.targets) != 0 &&
+       ((ii / check.convergence.every) == round(ii / check.convergence.every)))  {
       current.con.diff <- rep(NA, length(names(continuous.targets)))
       names(current.con.diff) <- names(continuous.targets)
       sample[, "weightprop"] <- prop.table(sample[, "weights"])
       for(con.t in names(continuous.targets)) {
         current.con.diff[con.t] <- checkContinuous(sample = sample, var = con.t, 
-                                                   con.target = continuous.targets[[con.t]], 
-                                                   weights = "weightprop", debug = F)
+                                                   con.target = continuous.targets[[con.t]],
+                                                   weights = "weightprop", debug = FALSE)
       }
       current.con.diff <- max(current.con.diff)
     } else {
       current.con.diff <- 0
     }
     
-    if(length(discrete.targets)!=0 & ((ii / check.convergence.every)==round(ii/check.convergence.every)))  {
+    if(length(discrete.targets) != 0 &&
+       ((ii / check.convergence.every) == round(ii / check.convergence.every)))  {
       # current.values <- lapply(names(discrete.targets),
       #                          function(x) wttabSlim(sample[, x], weights = sample[, "weights"],
       #                                                current.levels = discrete.levels[[x]]))
@@ -243,7 +320,7 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
       }
     }
   }
-  if(maxit==ii) {
+  if(maxit == ii) {
     warning("Maximum iterations reached without convergence.")
   }
   
@@ -274,5 +351,3 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   }
   return(output.weights)
 }
-
-

@@ -1,2 +1,7 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^LICENSE\.md$
+^namespacebak$
+^src/.*\\.o$
+^src/.*\\.dll$
+^src/.*\\.so$

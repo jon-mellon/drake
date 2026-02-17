@@ -1,6 +1,6 @@
 wttabSlim <-function (x, weights = NULL,current.levels) 
 {
-  result <- .Internal(rowsum_matrix(weights, as.character(x), current.levels, F, current.levels))[,1]
+  result <- .Internal(rowsum_matrix(weights, as.character(x), current.levels, FALSE, current.levels))[,1]
   result[is.na(result)] <- 0
   # result <- as.table.default(result)
   return(result)
@@ -80,24 +80,24 @@ weightByMeanLinear <- function(weight, var, mean.target) {
 
 weightByMean <- function(weight, var, mean.target) {
   n <- sum(!is.na(weight ))
-  weight <- (weight / sum(weight, na.rm = T)) * n
+  weight <- (weight / sum(weight, na.rm = TRUE)) * n
   vw <- var * weight
-  current.prob <- sum(vw, na.rm = T) / n
+  current.prob <- sum(vw, na.rm = TRUE) / n
   hilo <- var>mean.target
   
   if(current.prob<mean.target) {
-    n_b <- sum(weight[hilo], na.rm = T)
-    b <- sum(vw[hilo], na.rm = T) / n_b
+    n_b <- sum(weight[hilo], na.rm = TRUE)
+    b <- sum(vw[hilo], na.rm = TRUE) / n_b
     
-    n_a <- sum(weight[!hilo], na.rm = T)
-    a <- sum(vw[!hilo], na.rm = T) / n_a
+    n_a <- sum(weight[!hilo], na.rm = TRUE)
+    a <- sum(vw[!hilo], na.rm = TRUE) / n_a
     
   } else {
-    n_a <- sum(weight[hilo], na.rm = T)
-    a <- sum(vw[hilo], na.rm = T) / n_a
+    n_a <- sum(weight[hilo], na.rm = TRUE)
+    a <- sum(vw[hilo], na.rm = TRUE) / n_a
     
-    n_b <- sum(weight[!hilo], na.rm = T)
-    b <- sum(vw[!hilo], na.rm = T) / n_b
+    n_b <- sum(weight[!hilo], na.rm = TRUE)
+    b <- sum(vw[!hilo], na.rm = TRUE) / n_b
   }
   
   fun <- function(k) {
@@ -164,7 +164,7 @@ regularizeValuesSlim <- function (x, y, ties) {
   list(x = x, y = y)
 }
 
-approxSlim <- function (x, y = NULL, xout, n = 50) {
+approxSlim <- function (x, y = NULL, xout, n = 50, na.rm = FALSE) {
   method <- "linear"
   method <- pmatch(method, c("linear", "constant"))
   
@@ -180,7 +180,7 @@ approxSlim <- function (x, y = NULL, xout, n = 50) {
   
   x <- as.double(x)
   y <- as.double(y)
-  yout <- .Call(stats:::C_Approx, x, y, xout, method, yleft, yright, f,na.rm)
+  yout <- .Call(stats:::C_Approx, x, y, xout, method, yleft, yright, f, na.rm)
   return(yout)
 }
 
@@ -375,7 +375,7 @@ checkOneContinuous <- function(data, var, con.target, weights) {
   
   return(total.diff)
 }
-checkContinuous <- function(sample, var, con.target, weights, debug = F) {
+checkContinuous <- function(sample, var, con.target, weights, debug = FALSE) {
   if(debug) {
     browser()
   }
@@ -398,7 +398,7 @@ checkContinuous <- function(sample, var, con.target, weights, debug = F) {
                                         con.target = con.target[[strat]][[kk]], 
                                         weights = weights)
       }
-      if(max(diffs, na.rm = T)>total.diff) {
+      if(max(diffs, na.rm = TRUE) > total.diff) {
         total.diff <- max(diffs)  
       }
     }
@@ -420,15 +420,16 @@ checkDiscrete <- function(discrete.targets, sample, weights) {
   names(vals) <- names(discrete.targets)
   
   for(ii in names(discrete.targets)) {
-    vals[[ii]] <- round(dtf(Target = discrete.targets[[ii]], sapply(by.weight, function(x) x[[ii]]))  * 100, 3)
+    vals[[ii]] <- round(mellonMisc::dtf(Target = discrete.targets[[ii]],
+                                        sapply(by.weight, function(x) x[[ii]])) * 100, 3)
   }
   
   return(vals)
 }
 weightEfficiency <- function(final.weights, initial.weights) {
   initial.weights[is.na(final.weights)] <- NA
-  efficiency <- ((sum(initial.weights * final.weights, na.rm = T)^2) * 100) / 
-    (sum(initial.weights, na.rm = T) * sum(initial.weights* final.weights^2, na.rm = T))  
+  efficiency <- ((sum(initial.weights * final.weights, na.rm = TRUE)^2) * 100) /
+    (sum(initial.weights, na.rm = TRUE) * sum(initial.weights * final.weights^2, na.rm = TRUE))
   return(efficiency)
 }
 

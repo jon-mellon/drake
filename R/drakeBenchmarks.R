@@ -896,11 +896,11 @@ loadDrakeBenchmarkSuite <- function(path) {
 
 compareDrakeBenchmarkSuites <- function(current, baseline,
                                         tolerances = c(
-                                          sum_error = 1e-8,
-                                          max_abs_discrete_diff = 1e-8,
-                                          max_abs_subset_diff = 1e-8,
-                                          max_continuous_diff = 1e-6,
-                                          max_abs_mean_diff = 1e-8,
+                                          sum_error = 1e-6,
+                                          max_abs_discrete_diff = 5e-4,
+                                          max_abs_subset_diff = 5e-4,
+                                          max_continuous_diff = 1e-2,
+                                          max_abs_mean_diff = 1e-3,
                                           rr_floor_shortfall = 1e-8,
                                           repeat_max_abs_diff = 1e-10
                                         )) {

@@ -6,6 +6,64 @@ wttabSlim <-function (x, weights = NULL,current.levels)
   return(result)
 }
 
+clampWeights <- function(weights, max.weights, min.weights) {
+  weights[weights > max.weights] <- max.weights
+  weights[weights < min.weights] <- min.weights
+  weights
+}
+
+nearestDensityGridIndex <- function(x, grid) {
+  if(length(grid) < 2L) {
+    return(rep.int(1L, length(x)))
+  }
+
+  midpoints <- (grid[-1L] + grid[-length(grid)]) / 2
+  as.integer(findInterval(x, vec = midpoints) + 1L)
+}
+
+normalizeDensityTargetY <- function(con.target) {
+  con.target$y / sum(con.target$y)
+}
+
+resolveContinuousSupplement <- function(dens.matches, con.target) {
+  if(is.list(dens.matches) && !is.null(dens.matches$match.index)) {
+    return(dens.matches)
+  }
+
+  target.y <- attr(dens.matches, "target.y")
+  if(is.null(target.y)) {
+    target.y <- normalizeDensityTargetY(con.target)
+  }
+
+  list(
+    match.index = as.integer(dens.matches),
+    target.y = target.y
+  )
+}
+
+buildDiscreteSubsetTargetMatrix <- function(discrete.sub, target.levels, strata.levels) {
+  matrix.out <- matrix(0,
+                       nrow = length(target.levels),
+                       ncol = length(strata.levels),
+                       dimnames = list(target.levels, strata.levels))
+
+  for(strata.level in names(discrete.sub)) {
+    matrix.out[names(discrete.sub[[strata.level]]), strata.level] <- discrete.sub[[strata.level]]
+  }
+
+  matrix.out
+}
+
+maxMeanTargetDiff <- function(sample, weights, mean.targets) {
+  if(is.null(mean.targets) || length(mean.targets) == 0L) {
+    return(0)
+  }
+
+  max(vapply(names(mean.targets), function(var) {
+    abs(stats::weighted.mean(sample[[var]], weights) - mean.targets[[var]])
+  }, numeric(1)))
+}
+
 unirootSlim <- function (f, interval, lower = min(interval), upper = max(interval)) {
   f.lower = f(lower)
   f.upper = f(upper)
@@ -184,47 +242,35 @@ approxSlim <- function (x, y = NULL, xout, n = 50, na.rm = FALSE) {
   return(yout)
 }
 
-weightContinuousOnce <- function(data, var, con.target, dens.matches) {
-  # start.weights <- sum(data[, "weights"])
-  # data[, "weights"] <- data[, "weights"] / start.weights
-  
-  sample.density <- densitySlim(x = data[, var], n = length(con.target$x), 
+weightContinuousOnceValues <- function(x, weights, con.target, dens.matches) {
+  supp <- resolveContinuousSupplement(dens.matches, con.target)
+
+  sample.density <- densitySlim(x = x, n = length(con.target$x), 
                                 from = min(con.target$x), 
                                 to = max(con.target$x), 
-                                weights = data[, "weights"], bw = con.target$bw)
+                                weights = weights, bw = con.target$bw)
   sample.density$y <- sample.density$y / sum(sample.density$y)
-  con.target$y <- con.target$y / sum(con.target$y)
-  ratios <- con.target$y / sample.density$y
-  
-  unique.vals <- unique.default(data[, var])
-  
-  # dens.matches <- vapply(unique.vals, function(x)
-  #   which.min(abs(sample.density$x - x)), 1)
-  
-  ratio.match <- ratios[dens.matches]
-  
-  names(ratio.match) <-  as.character(unique.vals)
-  char.var <- as.character(data[, var])
-  # newwt <- ratio.match[char.var]
-  newwt <- ratio.match[attributes(dens.matches)$charmatches]
-  # print(all(newwt==newwttest))
-  
-  newwt <- newwt * data[, "weights"]
-  
+  ratios <- supp$target.y / sample.density$y
+  newwt <- ratios[supp$match.index] * weights
+
   if(anyNA(newwt)) {
-    
-    stop("NAs on weights after raking on ", var)
+    stop("NAs on weights after raking on continuous target")
   }
   return(newwt)
 }
+
+weightContinuousOnce <- function(data, var, con.target, dens.matches) {
+  weightContinuousOnceValues(data[, var], data[, "weights"], con.target, dens.matches)
+}
+
 weightByContinuous <- function(sample, var, con.target, 
                                max.weights = max.weights, min.weights = min.weights,
                                cap.every.var, con.supp) {
   wt.init <- sample[, "weights"]
   if(class(con.target)=="density") {
-    wt.out <- weightContinuousOnce(data = sample, var, con.target, dens.matches = con.supp[[var]])
+    wt.out <- weightContinuousOnceValues(sample[, var], wt.init, con.target, dens.matches = con.supp[[var]])
   } else {
-    wt.out <- rep(NA, nrow(sample))
+    wt.out <- wt.init
     stratify.var <- names(con.target)
     for(strat in stratify.var) {
       stratify.values <- names(con.target[[strat]])
@@ -238,26 +284,23 @@ weightByContinuous <- function(sample, var, con.target,
                     unique(stratify.values[!stratify.values %in% sample[, strat]])))
       }
       for(kk in stratify.values) {
-        sample.temp <- sample[sample[, strat]==kk, ]
-        tmp.wts <- sample.temp[, "weights"]
+        supp <- con.supp[[strat]][[kk]]
+        row.idx <- supp$rows
+        tmp.wts <- wt.init[row.idx]
         tot.weight <- sum(tmp.wts)
-        
-        tmp.wts <- weightContinuousOnce(data = sample.temp, var = var, 
-                                        con.target = con.target[[strat]][[kk]],
-                                        dens.matches = con.supp[[strat]][[kk]])
+
+        tmp.wts <- weightContinuousOnceValues(x = sample[row.idx, var],
+                                              weights = tmp.wts,
+                                              con.target = con.target[[strat]][[kk]],
+                                              dens.matches = supp)
         tmp.wts <- (tmp.wts / sum(tmp.wts)) * tot.weight
-        
-        weight.replace <- tmp.wts[match(sample[, "unique.id"], sample.temp[, "unique.id"])]
-        wt.out[!is.na(weight.replace)] <- weight.replace[!is.na(weight.replace)]
+        wt.out[row.idx] <- tmp.wts
       }
     }
-    wt.out[is.na(wt.out)] <- wt.init[is.na(wt.out)]
-    
-    }
+  }
   
   if(cap.every.var) {
-    wt.out[wt.out>max.weights] <- max.weights
-    wt.out[wt.out<min.weights] <- min.weights  
+    wt.out <- clampWeights(wt.out, max.weights = max.weights, min.weights = min.weights)
   }
   
   return(wt.out)
@@ -266,23 +309,13 @@ weightByContinuous <- function(sample, var, con.target,
 
 createContinuousSupplement <- function(sample, var, con.target) {
   if(class(con.target)=="density") {
-    testdensity <- densitySlim(x = sample[, var], n = length(con.target$x), 
-                               from = min(con.target$x), 
-                               to = max(con.target$x), 
-                               weights = sample[, "weights"], bw = con.target$bw)
-    unique.vals <- unique.default(sample[, var])
-    
-    dens.matches <- vapply(unique.vals, function(x)
-      which.min(abs(testdensity$x - x)), 1)
-    
-    attributes(dens.matches)$charmatches <- match(as.character(sample[, var]), unique.vals)
-    
-    out <- list(dens.matches)
+    out <- list(list(
+      match.index = nearestDensityGridIndex(sample[, var], con.target$x),
+      target.y = normalizeDensityTargetY(con.target)
+    ))
     names(out) <- var
   } else {
     out <- list()
-    
-    # wt.out <- rep(NA, nrow(sample))
     stratify.var <- names(con.target)
     for(strat in stratify.var) {
       out[[strat]] <- list()
@@ -304,25 +337,14 @@ createContinuousSupplement <- function(sample, var, con.target) {
     for(strat in stratify.var) {
       
       for(kk in strat.vals[[strat]] ) {
-        sample.temp <- sample[sample[, strat]==kk, ]
-        tmp.wts <- sample.temp[, "weights"]
-        tot.weight <- sum(tmp.wts)
-        
-        testdensity <- densitySlim(x = sample.temp[, var], n = length(con.target[[strat]][[kk]]$x), 
-                                   from = min(con.target[[strat]][[kk]]$x), 
-                                   to = max(con.target[[strat]][[kk]]$x), 
-                                   weights = sample[, "weights"], bw = con.target[[strat]][[kk]]$bw)
-        unique.vals <- unique.default(sample.temp[, var])
-        
-        dens.matches <- vapply(unique.vals, function(x)
-          which.min(abs(testdensity$x - x)), 1)
-        attributes(dens.matches)$charmatches <- match(as.character(sample.temp[, var]), unique.vals)
-        
-        out[[strat]][[kk]] <- dens.matches
+        row.idx <- which(sample[, strat]==kk)
+        out[[strat]][[kk]] <- list(
+          rows = row.idx,
+          match.index = nearestDensityGridIndex(sample[row.idx, var], con.target[[strat]][[kk]]$x),
+          target.y = normalizeDensityTargetY(con.target[[strat]][[kk]])
+        )
       }
     }
-    
-   
   }
   return(out)
 }

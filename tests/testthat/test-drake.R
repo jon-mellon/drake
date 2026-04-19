@@ -156,6 +156,24 @@ test_that("drake converges with longer maxit", {
   expect_true(all(is.finite(w)))
 })
 
+test_that("drake checks mean-target convergence instead of running to maxit", {
+  target.mean <- mean(sample_small$age) + 2
+
+  expect_warning({
+    w <- drake(
+      sample = sample_small,
+      continuous.targets = NULL,
+      discrete.targets = list(),
+      mean.targets = list(age = target.mean),
+      maxit = 50,
+      check.convergence.every = 1
+    )
+  }, NA)
+
+  achieved.mean <- stats::weighted.mean(sample_small$age, w)
+  expect_equal(achieved.mean, target.mean, tolerance = 1e-3)
+})
+
 
 test_that("drakeClose returns weights", {
   expect_warning({

@@ -5,6 +5,65 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
+// CWeightByDiscreteCodes
+NumericVector CWeightByDiscreteCodes(IntegerVector codes, NumericVector weights, NumericVector targets);
+RcppExport SEXP _drake_CWeightByDiscreteCodes(SEXP codesSEXP, SEXP weightsSEXP, SEXP targetsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type codes(codesSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type targets(targetsSEXP);
+    rcpp_result_gen = Rcpp::wrap(CWeightByDiscreteCodes(codes, weights, targets));
+    return rcpp_result_gen;
+END_RCPP
+}
+// CMaxAbsDiscreteDiff
+double CMaxAbsDiscreteDiff(IntegerVector codes, NumericVector weights, NumericVector targets);
+RcppExport SEXP _drake_CMaxAbsDiscreteDiff(SEXP codesSEXP, SEXP weightsSEXP, SEXP targetsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type codes(codesSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type targets(targetsSEXP);
+    rcpp_result_gen = Rcpp::wrap(CMaxAbsDiscreteDiff(codes, weights, targets));
+    return rcpp_result_gen;
+END_RCPP
+}
+// CWeightByDiscreteSubsetCodes
+NumericVector CWeightByDiscreteSubsetCodes(IntegerVector target_codes, IntegerVector strata_codes, NumericVector weights, NumericMatrix targets_by_strata);
+RcppExport SEXP _drake_CWeightByDiscreteSubsetCodes(SEXP target_codesSEXP, SEXP strata_codesSEXP, SEXP weightsSEXP, SEXP targets_by_strataSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type target_codes(target_codesSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type strata_codes(strata_codesSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type targets_by_strata(targets_by_strataSEXP);
+    rcpp_result_gen = Rcpp::wrap(CWeightByDiscreteSubsetCodes(target_codes, strata_codes, weights, targets_by_strata));
+    return rcpp_result_gen;
+END_RCPP
+}
+// CMaxAbsDiscreteSubsetDiff
+double CMaxAbsDiscreteSubsetDiff(IntegerVector target_codes, IntegerVector strata_codes, NumericVector weights, NumericMatrix targets_by_strata);
+RcppExport SEXP _drake_CMaxAbsDiscreteSubsetDiff(SEXP target_codesSEXP, SEXP strata_codesSEXP, SEXP weightsSEXP, SEXP targets_by_strataSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type target_codes(target_codesSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type strata_codes(strata_codesSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type targets_by_strata(targets_by_strataSEXP);
+    rcpp_result_gen = Rcpp::wrap(CMaxAbsDiscreteSubsetDiff(target_codes, strata_codes, weights, targets_by_strata));
+    return rcpp_result_gen;
+END_RCPP
+}
 // HiFunction
 double HiFunction(double k, NumericVector hivw, NumericVector lovw, NumericVector hidiff, NumericVector lodiff, NumericVector loweight, NumericVector hiweight, double meantarget, int hilength, int lolength);
 RcppExport SEXP _drake_HiFunction(SEXP kSEXP, SEXP hivwSEXP, SEXP lovwSEXP, SEXP hidiffSEXP, SEXP lodiffSEXP, SEXP loweightSEXP, SEXP hiweightSEXP, SEXP meantargetSEXP, SEXP hilengthSEXP, SEXP lolengthSEXP) {
@@ -115,6 +174,10 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_drake_CWeightByDiscreteCodes", (DL_FUNC) &_drake_CWeightByDiscreteCodes, 3},
+    {"_drake_CMaxAbsDiscreteDiff", (DL_FUNC) &_drake_CMaxAbsDiscreteDiff, 3},
+    {"_drake_CWeightByDiscreteSubsetCodes", (DL_FUNC) &_drake_CWeightByDiscreteSubsetCodes, 4},
+    {"_drake_CMaxAbsDiscreteSubsetDiff", (DL_FUNC) &_drake_CMaxAbsDiscreteSubsetDiff, 4},
     {"_drake_HiFunction", (DL_FUNC) &_drake_HiFunction, 10},
     {"_drake_LoFunction", (DL_FUNC) &_drake_LoFunction, 10},
     {"_drake_LoZero", (DL_FUNC) &_drake_LoZero, 12},

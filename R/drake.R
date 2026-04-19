@@ -128,6 +128,10 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   var.names.cont2 <- unlist(lapply(continuous.targets, function(x) names(x)))
   var.names.mean <- names(mean.targets)
   var.names.discrete.sub <- names(discrete.target.subset)
+  continuous.names <- names(continuous.targets)
+  discrete.names <- names(discrete.targets)
+  mean.names <- names(mean.targets)
+  discrete.sub.names <- names(discrete.target.subset)
 
   if(any(var.names.cont2 %in% c("data.name", "bw"))) {
     var.names.cont2 <- NULL
@@ -218,9 +222,8 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
     }
   }
 
-  sample[, "weights"] <- weights
   continuous.supplement <- list()
-  for(var in names(continuous.targets)) {
+  for(var in continuous.names) {
     continuous.supplement[[var]]  <- createContinuousSupplement(sample = sample, 
                                                                 var = var, 
                                                                 con.target = continuous.targets[[var]])
@@ -242,19 +245,16 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
          (current.mean.diff > max.mean.diff))) {
 
     ii <- ii + 1L
-    sample[, "weights"] <- weights
-
-    for(var in names(continuous.targets)) {
-      weights <- weightByContinuous(var = var, sample = sample, 
+    for(var in continuous.names) {
+      weights <- weightByContinuous(weights = weights, var = var, sample = sample, 
                                     con.target = continuous.targets[[var]], 
                                     max.weights = max.weights, 
                                     min.weights = min.weights, 
                                     cap.every.var = cap.every.var,
                                     con.supp = continuous.supplement[[var]])
-      sample[, "weights"] <- weights
     }
 
-    for(var in names(discrete.target.subset)) {
+    for(var in discrete.sub.names) {
       for(strata.var in names(discrete.target.subset[[var]])) {
         weights <- CWeightByDiscreteSubsetCodes(
           target_codes = discrete.codes[[var]],
@@ -268,7 +268,7 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
       }
     }
 
-    for(var in names(discrete.targets)) {
+    for(var in discrete.names) {
       weights <- CWeightByDiscreteCodes(
         codes = discrete.codes[[var]],
         weights = weights,
@@ -279,7 +279,7 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
       }
     }
 
-    for(var in names(mean.targets)) {
+    for(var in mean.names) {
       weights <- CWeightByMeanLinear(weight = weights, 
                                      var = sample[[var]], 
                                      meantarget = mean.targets[[var]])
@@ -307,19 +307,20 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
 
     if((ii %% check.convergence.every) == 0L)  {
       if(length(continuous.targets) != 0L) {
-        sample[, "weightprop"] <- weights / sum(weights)
-        current.con.diff <- rep(NA_real_, length(names(continuous.targets)))
-        names(current.con.diff) <- names(continuous.targets)
-        for(con.t in names(continuous.targets)) {
-          current.con.diff[con.t] <- checkContinuous(sample = sample, var = con.t, 
-                                                     con.target = continuous.targets[[con.t]],
-                                                     weights = "weightprop", debug = FALSE)
+        current.con.diff <- rep(NA_real_, length(continuous.names))
+        names(current.con.diff) <- continuous.names
+        for(con.t in continuous.names) {
+          current.con.diff[con.t] <- checkContinuousPrepared(
+            weights = weights,
+            con.target = continuous.targets[[con.t]],
+            con.supp = continuous.supplement[[con.t]]
+          )
         }
         current.con.diff <- max(current.con.diff)
       }
 
       if(length(discrete.targets) != 0L) {
-        current.discrete.diff <- max(vapply(names(discrete.targets), function(var) {
+        current.discrete.diff <- max(vapply(discrete.names, function(var) {
           CMaxAbsDiscreteDiff(discrete.codes[[var]], weights, discrete.targets[[var]])
         }, numeric(1)))
       }

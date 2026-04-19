@@ -21,6 +21,45 @@ nearestDensityGridIndex <- function(x, grid) {
   as.integer(findInterval(x, vec = midpoints) + 1L)
 }
 
+prepareDensityKernel <- function(con.target) {
+  n.user <- length(con.target$x)
+  n <- max(n.user, 512L)
+  if(n > 512L) {
+    n <- 2^ceiling(log2(n))
+  }
+
+  from <- min(con.target$x)
+  to <- max(con.target$x)
+  lo <- from - 4 * con.target$bw
+  up <- to + 4 * con.target$bw
+
+  kords <- seq.int(0, 2 * (up - lo), length.out = 2L * n)
+  kords[(n + 2L):(2L * n)] <- -kords[n:2L]
+  kords <- dnorm(kords, sd = con.target$bw)
+
+  xords <- seq.int(lo, up, length.out = n)
+  xout <- seq.int(from, to, length.out = n.user)
+  step <- (up - lo) / (n - 1L)
+  interp.pos <- ((xout - lo) / step) + 1
+  interp.pos <- pmax.int(1, pmin.int(interp.pos, n))
+  interp.left <- pmax.int(1L, pmin.int(n - 1L, floor(interp.pos)))
+  interp.right <- interp.left + 1L
+  interp.frac <- interp.pos - interp.left
+
+  list(
+    bw = con.target$bw,
+    n = n,
+    lo = lo,
+    up = up,
+    xords = xords,
+    xout = xout,
+    kernel_fft = Conj(fft(kords)),
+    interp.left = as.integer(interp.left),
+    interp.right = as.integer(interp.right),
+    interp.frac = interp.frac
+  )
+}
+
 normalizeDensityTargetY <- function(con.target) {
   con.target$y / sum(con.target$y)
 }
@@ -37,8 +76,74 @@ resolveContinuousSupplement <- function(dens.matches, con.target) {
 
   list(
     match.index = as.integer(dens.matches),
-    target.y = target.y
+    target.y = target.y,
+    density.prep = prepareDensityKernel(con.target)
   )
+}
+
+checkOneContinuousValues <- function(x, weights, con.target, con.supp = NULL) {
+  supp <- if(is.null(con.supp)) {
+    list(
+      x.values = x,
+      match.index = nearestDensityGridIndex(x, con.target$x),
+      target.y = normalizeDensityTargetY(con.target),
+      density.prep = prepareDensityKernel(con.target)
+    )
+  } else {
+    resolveContinuousSupplement(con.supp, con.target)
+  }
+
+  if(is.null(supp$x.values)) {
+    supp$x.values <- x
+  }
+
+  total.weight <- sum(weights)
+  if(!is.finite(total.weight) || total.weight <= 0) {
+    return(NA_real_)
+  }
+
+  weight.vec <- weights / total.weight
+  sample.y <- densityPreparedY(supp$x.values, weight.vec, supp$density.prep)
+  sample.y <- sample.y / sum(sample.y)
+  sum(abs(supp$target.y - sample.y))
+}
+
+checkContinuousPrepared <- function(weights, con.target, con.supp) {
+  if(inherits(con.target, "density")) {
+    return(checkOneContinuousValues(
+      x = con.supp[[1L]]$x.values,
+      weights = weights,
+      con.target = con.target,
+      con.supp = con.supp[[1L]]
+    ))
+  }
+
+  total.diff <- 0
+  stratify.var <- names(con.target)
+
+  for(strat in stratify.var) {
+    stratify.values <- names(con.target[[strat]])
+    stratify.values <- stratify.values[!is.na(stratify.values)]
+    diffs <- rep(NA_real_, length(stratify.values))
+    names(diffs) <- stratify.values
+
+    for(kk in stratify.values) {
+      supp <- con.supp[[strat]][[kk]]
+      diffs[kk] <- checkOneContinuousValues(
+        x = supp$x.values,
+        weights = weights[supp$rows],
+        con.target = con.target[[strat]][[kk]],
+        con.supp = supp
+      )
+    }
+
+    strat.max <- max(diffs, na.rm = TRUE)
+    if(is.finite(strat.max) && strat.max > total.diff) {
+      total.diff <- strat.max
+    }
+  }
+
+  total.diff
 }
 
 buildDiscreteSubsetTargetMatrix <- function(discrete.sub, target.levels, strata.levels) {
@@ -208,6 +313,17 @@ densitySlim <- function (x, bw = 1, adjust = 1, kernel = "gaussian", weights = N
             class = "density")
 }
 
+densityPreparedY <- function(x, weights, density.prep) {
+  y <- .Call(stats:::C_BinDist, as.vector(x), weights,
+             density.prep$lo, density.prep$up, density.prep$n)
+  smooth <- fft(fft(y) * density.prep$kernel_fft, inverse = TRUE)
+  smooth <- pmax.int(0, Re(smooth)[1L:density.prep$n] / length(y))
+  left <- density.prep$interp.left
+  right <- density.prep$interp.right
+  frac <- density.prep$interp.frac
+  smooth[left] + ((smooth[right] - smooth[left]) * frac)
+}
+
 regularizeValuesSlim <- function (x, y, ties) {
   x <- xy.coords(x, y, setLab = FALSE)
   y <- x$y
@@ -244,13 +360,13 @@ approxSlim <- function (x, y = NULL, xout, n = 50, na.rm = FALSE) {
 
 weightContinuousOnceValues <- function(x, weights, con.target, dens.matches) {
   supp <- resolveContinuousSupplement(dens.matches, con.target)
+  if(!is.null(supp$x.values)) {
+    x <- supp$x.values
+  }
 
-  sample.density <- densitySlim(x = x, n = length(con.target$x), 
-                                from = min(con.target$x), 
-                                to = max(con.target$x), 
-                                weights = weights, bw = con.target$bw)
-  sample.density$y <- sample.density$y / sum(sample.density$y)
-  ratios <- supp$target.y / sample.density$y
+  sample.y <- densityPreparedY(x = x, weights = weights, density.prep = supp$density.prep)
+  sample.y <- sample.y / sum(sample.y)
+  ratios <- supp$target.y / sample.y
   newwt <- ratios[supp$match.index] * weights
 
   if(anyNA(newwt)) {
@@ -263,33 +379,26 @@ weightContinuousOnce <- function(data, var, con.target, dens.matches) {
   weightContinuousOnceValues(data[, var], data[, "weights"], con.target, dens.matches)
 }
 
-weightByContinuous <- function(sample, var, con.target, 
+weightByContinuous <- function(weights = NULL, sample, var, con.target, 
                                max.weights = max.weights, min.weights = min.weights,
                                cap.every.var, con.supp) {
-  wt.init <- sample[, "weights"]
-  if(class(con.target)=="density") {
-    wt.out <- weightContinuousOnceValues(sample[, var], wt.init, con.target, dens.matches = con.supp[[var]])
+  wt.init <- if(is.null(weights)) sample[, "weights"] else weights
+  if(inherits(con.target, "density")) {
+    supp <- con.supp[[var]]
+    wt.out <- weightContinuousOnceValues(supp$x.values, wt.init, con.target, dens.matches = supp)
   } else {
     wt.out <- wt.init
     stratify.var <- names(con.target)
     for(strat in stratify.var) {
       stratify.values <- names(con.target[[strat]])
       stratify.values <- stratify.values[!is.na(stratify.values)]
-      if(!all(sample[, strat] %in% stratify.values)) {
-        warning(paste0("For stratified draking, values in ", strat, "not in targets: ",
-                       unique(sample[, strat][!sample[, strat] %in% stratify.values])))
-      }
-      if(!all(stratify.values %in% sample[, strat])) {
-        stop(paste0("For stratified draking, values in ", strat, "not in sample: ",
-                    unique(stratify.values[!stratify.values %in% sample[, strat]])))
-      }
       for(kk in stratify.values) {
         supp <- con.supp[[strat]][[kk]]
         row.idx <- supp$rows
         tmp.wts <- wt.init[row.idx]
         tot.weight <- sum(tmp.wts)
 
-        tmp.wts <- weightContinuousOnceValues(x = sample[row.idx, var],
+        tmp.wts <- weightContinuousOnceValues(x = supp$x.values,
                                               weights = tmp.wts,
                                               con.target = con.target[[strat]][[kk]],
                                               dens.matches = supp)
@@ -308,10 +417,14 @@ weightByContinuous <- function(sample, var, con.target,
 
 
 createContinuousSupplement <- function(sample, var, con.target) {
-  if(class(con.target)=="density") {
+  x.values <- sample[[var]]
+
+  if(inherits(con.target, "density")) {
     out <- list(list(
-      match.index = nearestDensityGridIndex(sample[, var], con.target$x),
-      target.y = normalizeDensityTargetY(con.target)
+      x.values = x.values,
+      match.index = nearestDensityGridIndex(x.values, con.target$x),
+      target.y = normalizeDensityTargetY(con.target),
+      density.prep = prepareDensityKernel(con.target)
     ))
     names(out) <- var
   } else {
@@ -324,9 +437,15 @@ createContinuousSupplement <- function(sample, var, con.target) {
     strat.vals <- list()
     for(strat in stratify.var) {
       strat.vals[[strat]] <- names(con.target[[strat]])
-      if(!all(sample[, strat] %in%  strat.vals[[strat]])) {
+      strat.column <- sample[[strat]]
+      if(!all(strat.column %in% strat.vals[[strat]])) {
         warning(paste0("For stratified draking, values in ", stratify.var, "not in targets: ",
-                       unique(sample[, strat][!sample[, strat] %in% strat.vals[[strat]]])))
+                       unique(strat.column[!strat.column %in% strat.vals[[strat]]])))
+      }
+      if(!all(strat.vals[[strat]][!is.na(strat.vals[[strat]])] %in% strat.column)) {
+        stop(paste0("For stratified draking, values in ", strat, "not in sample: ",
+                    unique(strat.vals[[strat]][!is.na(strat.vals[[strat]]) &
+                                                !strat.vals[[strat]] %in% strat.column])))
       }
       strat.vals[[strat]] <- strat.vals[[strat]][!is.na(strat.vals[[strat]])]
     }
@@ -335,13 +454,16 @@ createContinuousSupplement <- function(sample, var, con.target) {
     # stratify.values <- stratify.values[!is.na(stratify.values)]
     
     for(strat in stratify.var) {
+      strat.column <- sample[[strat]]
       
       for(kk in strat.vals[[strat]] ) {
-        row.idx <- which(sample[, strat]==kk)
+        row.idx <- which(strat.column == kk)
         out[[strat]][[kk]] <- list(
           rows = row.idx,
-          match.index = nearestDensityGridIndex(sample[row.idx, var], con.target[[strat]][[kk]]$x),
-          target.y = normalizeDensityTargetY(con.target[[strat]][[kk]])
+          x.values = x.values[row.idx],
+          match.index = nearestDensityGridIndex(x.values[row.idx], con.target[[strat]][[kk]]$x),
+          target.y = normalizeDensityTargetY(con.target[[strat]][[kk]]),
+          density.prep = prepareDensityKernel(con.target[[strat]][[kk]])
         )
       }
     }
@@ -470,30 +592,53 @@ weightByDiscrete <- function(sample, var, init.weight, discrete.targets,
 }
 
 
-checkOneContinuous <- function(data, var, con.target, weights) {
-  data[, weights] <- data[, weights] / sum(data[, weights])
-  
-  sample.density <- densitySlim(data[, var], n = length(con.target$x), 
-                                from = min(con.target$x), 
-                                to = max(con.target$x), 
-                                weights = data[, weights], bw = con.target$bw)
-  
-  sample.density$y <- sample.density$y / sum(sample.density$y)
-  con.target$y <- con.target$y / sum(con.target$y)
-  total.diff <- sum(abs(con.target$y - sample.density$y))
-  
-  return(total.diff)
+checkOneContinuous <- function(data, var, con.target, weights, con.supp = NULL) {
+  weight.vec <- if(is.character(weights) && length(weights) == 1L) {
+    data[[weights]]
+  } else {
+    weights
+  }
+  supp <- if(is.null(con.supp)) {
+    list(
+      x.values = data[[var]],
+      match.index = nearestDensityGridIndex(data[, var], con.target$x),
+      target.y = normalizeDensityTargetY(con.target),
+      density.prep = prepareDensityKernel(con.target)
+    )
+  } else {
+    resolveContinuousSupplement(con.supp, con.target)
+  }
+  if(is.null(supp$x.values)) {
+    supp$x.values <- data[[var]]
+  }
+
+  checkOneContinuousValues(
+    x = supp$x.values,
+    weights = weight.vec,
+    con.target = con.target,
+    con.supp = supp
+  )
 }
-checkContinuous <- function(sample, var, con.target, weights, debug = FALSE) {
+checkContinuous <- function(sample, var, con.target, weights, debug = FALSE, con.supp = NULL) {
   if(debug) {
     browser()
   }
+  if(!is.null(con.supp) && !(is.character(weights) && length(weights) == 1L)) {
+    return(checkContinuousPrepared(weights = weights, con.target = con.target, con.supp = con.supp))
+  }
+
   sample <- sample[!is.na(sample[, var]) & !is.na(sample[, weights]), ]
   if(length(var)==0) {
     return(NULL)
   }
-  if(class(con.target)=="density") {
-    total.diff <- checkOneContinuous(sample, var, con.target, weights)
+  if(inherits(con.target, "density")) {
+    total.diff <- checkOneContinuous(
+      sample,
+      var,
+      con.target,
+      weights,
+      con.supp = if(is.null(con.supp)) NULL else con.supp[[var]]
+    )
   } else {
     stratify.var <- names(con.target)
     total.diff <- 0
@@ -505,7 +650,8 @@ checkContinuous <- function(sample, var, con.target, weights, debug = FALSE) {
         diffs[kk] <- checkOneContinuous(data = sample[which(sample[, strat]==kk), ], 
                                         var = var,
                                         con.target = con.target[[strat]][[kk]], 
-                                        weights = weights)
+                                        weights = weights,
+                                        con.supp = if(is.null(con.supp)) NULL else con.supp[[strat]][[kk]])
       }
       if(max(diffs, na.rm = TRUE) > total.diff) {
         total.diff <- max(diffs)  

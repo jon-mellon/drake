@@ -19,21 +19,22 @@ double HiFunction (double k, NumericVector hivw, NumericVector lovw,
                    NumericVector hidiff, NumericVector lodiff, 
                    NumericVector loweight, NumericVector hiweight, 
                    double meantarget, int hilength, int lolength){
-  
-  NumericVector kpowdifflo(lolength);
+  double vwasum = 0.0;
+  double vwbsum = 0.0;
+  double n_a = 0.0;
+  double n_b = 0.0;
+
   for(int i = 0; i < lolength; ++i) {
-    kpowdifflo[i] = pow(k, (lodiff[i]));  
+    double kpow = pow(k, lodiff[i]);
+    vwasum += lovw[i] * kpow;
+    n_a += loweight[i] * kpow;
   }
-  NumericVector kpowdiffhi(hilength);
   for(int i = 0; i < hilength; ++i) {
-    kpowdiffhi[i] = pow(k, (hidiff[i]));  
+    double kpow = pow(k, hidiff[i]);
+    vwbsum += hivw[i] / kpow;
+    n_b += hiweight[i] / kpow;
   }
-  
-  double vwasum = sum(lovw * kpowdifflo );
-  double vwbsum = sum(hivw / kpowdiffhi );
-  double n_a = sum(loweight * kpowdifflo );
-  double n_b = sum(hiweight / kpowdiffhi );
-  
+
   double out = (vwasum + vwbsum) / (n_a + n_b) - meantarget;
   return out;
 }
@@ -44,21 +45,22 @@ double LoFunction (double k, NumericVector hivw, NumericVector lovw,
                    NumericVector hidiff, NumericVector lodiff, 
                    NumericVector loweight, NumericVector hiweight, 
                    double meantarget, int hilength, int lolength){
-  
-  NumericVector kpowdifflo(lolength);
+  double vwasum = 0.0;
+  double vwbsum = 0.0;
+  double n_a = 0.0;
+  double n_b = 0.0;
+
   for(int i = 0; i < lolength; ++i) {
-    kpowdifflo[i] = pow(k, (lodiff[i]));  
+    double kpow = pow(k, lodiff[i]);
+    vwasum += lovw[i] / kpow;
+    n_a += loweight[i] / kpow;
   }
-  NumericVector kpowdiffhi(hilength);
   for(int i = 0; i < hilength; ++i) {
-    kpowdiffhi[i] = pow(k, (hidiff[i]));  
+    double kpow = pow(k, hidiff[i]);
+    vwbsum += hivw[i] * kpow;
+    n_b += hiweight[i] * kpow;
   }
-  
-  double vwasum = sum(lovw / kpowdifflo );
-  double vwbsum = sum(hivw * kpowdiffhi );
-  double n_a = sum(loweight / kpowdifflo );
-  double n_b = sum(hiweight * kpowdiffhi );
-  
+
   double out = (vwasum + vwbsum) / (n_a + n_b) - meantarget;
   return out;
 }
@@ -416,11 +418,7 @@ NumericVector CWeightByMeanLinear(NumericVector weight, NumericVector var, doubl
       kpowdiffhi[i] = pow(k, (hidiff[i]));  
       newhiweight[i] = hiweight[i] / kpowdiffhi[i];
     }
-    
-    
-    newhiweight = hiweight / kpowdiffhi;
-    
-    
+
     weight[hilo] = newloweight;
     weight[!hilo] = newhiweight;
   }

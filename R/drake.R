@@ -18,6 +18,11 @@
 #' 4. Mean targets: a monotone weight adjustment is solved using a
 #'    root-finding routine (C++ implementation for speed).
 #'
+#' Discrete target vectors are validated before iteration. Vectors summing
+#' above \code{1 + 1e-4} are rejected. Vectors summing below \code{1 - 1e-4}
+#' are explicitly normalized to sum to 1 and trigger warnings listing affected
+#' targets.
+#'
 #' After each full pass, weights are re-scaled to sum to the number of
 #' valid rows. Optional capping constrains extreme weights. Convergence is
 #' checked every \code{check.convergence.every} iterations by comparing
@@ -29,10 +34,13 @@
 #'   objects indexed by a stratifying variable.
 #' @param discrete.targets Named list of numeric vectors giving target
 #'   proportions for discrete variables. Each vector must be named with the
-#'   target levels and sum to 1 (or slightly less due to rounding).
+#'   target levels. Sums above \code{1 + 1e-4} error; sums below
+#'   \code{1 - 1e-4} are normalized to sum to 1 with a warning.
 #' @param discrete.target.subset Optional list specifying discrete targets
 #'   within a stratum. Structure: \code{list(target_var = list(strata_var =
-#'   list(level = c(target_level = proportion, ...), ...)))}.
+#'   list(level = c(target_level = proportion, ...), ...)))}. The same
+#'   sum-validation/normalization rule as \code{discrete.targets} is applied
+#'   to each stratum vector.
 #' @param mean.targets Optional named list of target means for numeric
 #'   variables.
 #' @param max.weights Maximum allowed weight value (applied after each pass).
@@ -100,10 +108,8 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   if(debug) {
     browser()
   }
-  tot.weights <- sapply(discrete.targets, sum)
-  if(any(tot.weights>1.0001)) {
-    stop("Following targets sum to more than 1: ", paste(names(which(tot.weights>1.0001)), collapse = ", "))
-  }
+  discrete.targets <- normalizeDiscreteTargets(discrete.targets, tol = 1e-4)
+  discrete.target.subset <- normalizeDiscreteTargetSubset(discrete.target.subset, tol = 1e-4)
   
   sample <- mellonMisc::dtf(sample)
   sample[, "unique.id"] <- 1:nrow(sample)

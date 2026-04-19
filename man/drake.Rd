@@ -38,6 +38,10 @@ weights are re-scaled to sum to the number of valid rows and optionally capped.
 Convergence is checked every \code{check.convergence.every} iterations using
 maximum absolute differences between targets and current weighted margins.
 
+Discrete target vectors are validated before iteration. Vectors summing above
+\code{1 + 1e-4} are rejected. Vectors summing below \code{1 - 1e-4} are
+explicitly normalized to sum to 1 and trigger warnings listing affected targets.
+
 Continuous targets are matched using kernel density ratios with a cached
 nearest-grid mapping for speed. Mean targets are adjusted using a monotone
 transformation solved by a C++ root-finder.
@@ -49,10 +53,13 @@ transformation solved by a C++ root-finder.
  indexed by a stratifying variable.}
 \item{discrete.targets}{Named list of numeric vectors giving target
  proportions for discrete variables. Each vector must be named with target
- levels and sum to 1 (or slightly less due to rounding).}
+ levels. Sums above \code{1 + 1e-4} error; sums below \code{1 - 1e-4} are
+ normalized to sum to 1 with a warning.}
 \item{discrete.target.subset}{Optional list specifying discrete targets within
  a stratum. Structure: \code{list(target_var = list(strata_var =
- list(level = c(target_level = proportion, ...), ...)))}.}
+ list(level = c(target_level = proportion, ...), ...)))}. The same
+ sum-validation/normalization rule as \code{discrete.targets} is applied to
+ each stratum vector.}
 \item{mean.targets}{Optional named list of target means for numeric variables.}
 \item{max.weights}{Maximum allowed weight value (applied after each pass).}
 \item{min.weights}{Minimum allowed weight value (applied after each pass).}

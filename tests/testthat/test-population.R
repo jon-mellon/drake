@@ -5,6 +5,7 @@ test_that("getMortCountries returns mapping", {
   mapping <- getMortCountries()
   expect_true(is.character(mapping))
   expect_true("US" %in% names(mapping))
+  expect_equal(unname(mapping["IL"]), "ISR")
 })
 
 

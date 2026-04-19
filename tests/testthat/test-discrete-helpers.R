@@ -19,6 +19,80 @@ test_that("fixDiscreteOrder aligns target ordering", {
   expect_error(fixDiscreteOrder(df, "var", bad_targets), "Sample values not in targets")
 })
 
+test_that("validateNormalizeDiscreteTargetVector normalizes under-sums", {
+  result <- validateNormalizeDiscreteTargetVector(
+    c(M = 0.2, F = 0.7),
+    label = "gender",
+    tol = 1e-4
+  )
+
+  expect_true(result$normalized)
+  expect_equal(sum(result$target), 1, tolerance = 1e-12)
+  expect_equal(unname(result$target), c(2 / 9, 7 / 9), tolerance = 1e-12)
+})
+
+test_that("validateNormalizeDiscreteTargetVector errors on over-sums", {
+  expect_error(
+    validateNormalizeDiscreteTargetVector(c(M = 0.8, F = 0.4), label = "gender", tol = 1e-4),
+    "sum to more than 1"
+  )
+})
+
+test_that("validateNormalizeDiscreteTargetVector leaves near-1 sums unchanged", {
+  target <- c(M = 0.5, F = 0.49995)
+  result <- validateNormalizeDiscreteTargetVector(target, label = "gender", tol = 1e-4)
+
+  expect_false(result$normalized)
+  expect_equal(result$target, target)
+})
+
+test_that("normalizeDiscreteTargets warns and normalizes affected entries", {
+  targets <- list(
+    gender = c(M = 0.2, F = 0.7),
+    region = c(North = 0.5, South = 0.49995)
+  )
+
+  expect_warning({
+    out <- normalizeDiscreteTargets(targets, tol = 1e-4)
+  }, "Normalized discrete.targets")
+
+  expect_equal(sum(out$gender), 1, tolerance = 1e-12)
+  expect_equal(out$region, targets$region)
+})
+
+test_that("normalizeDiscreteTargetSubset warns and normalizes affected entries", {
+  subset.targets <- list(
+    gender = list(
+      region = list(
+        North = c(M = 0.2, F = 0.7),
+        South = c(M = 0.6, F = 0.4)
+      )
+    )
+  )
+
+  expect_warning({
+    out <- normalizeDiscreteTargetSubset(subset.targets, tol = 1e-4)
+  }, "Normalized discrete.target.subset")
+
+  expect_equal(sum(out$gender$region$North), 1, tolerance = 1e-12)
+  expect_equal(out$gender$region$South, subset.targets$gender$region$South)
+})
+
+test_that("normalizeDiscreteTargetSubset errors on over-sums", {
+  bad.subset <- list(
+    gender = list(
+      region = list(
+        North = c(M = 0.8, F = 0.4)
+      )
+    )
+  )
+
+  expect_error(
+    normalizeDiscreteTargetSubset(bad.subset, tol = 1e-4),
+    "sum to more than 1"
+  )
+})
+
 
 test_that("weightByDiscrete applies marginal ratios", {
   df <- data.frame(

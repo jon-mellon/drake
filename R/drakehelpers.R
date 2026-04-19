@@ -340,6 +340,93 @@ fixDiscreteOrder <- function(sample, var, discrete.targets) {
   }
   return(discrete.targets)
 }
+
+validateNormalizeDiscreteTargetVector <- function(target, label, tol = 1e-4) {
+  target.sum <- sum(target)
+
+  if(target.sum > (1 + tol)) {
+    stop("Following targets sum to more than 1: ", label)
+  }
+
+  if(target.sum < (1 - tol)) {
+    if(target.sum <= 0) {
+      stop("Cannot normalize target with non-positive sum: ", label)
+    }
+    return(list(target = target / target.sum,
+                target.sum = target.sum,
+                normalized = TRUE))
+  }
+
+  return(list(target = target,
+              target.sum = target.sum,
+              normalized = FALSE))
+}
+
+normalizeDiscreteTargets <- function(discrete.targets, tol = 1e-4) {
+  if(is.null(discrete.targets) || length(discrete.targets) == 0) {
+    return(discrete.targets)
+  }
+
+  out <- discrete.targets
+  normalized <- character(0)
+
+  for(var in names(out)) {
+    result <- validateNormalizeDiscreteTargetVector(out[[var]], var, tol = tol)
+    out[[var]] <- result$target
+
+    if(result$normalized) {
+      normalized <- c(normalized, paste0(var, " (sum=",
+                                         formatC(result$target.sum, format = "f", digits = 6),
+                                         ")"))
+    }
+  }
+
+  if(length(normalized) > 0) {
+    warning("Normalized discrete.targets that summed to less than 1: ",
+            paste(normalized, collapse = ", "))
+  }
+
+  return(out)
+}
+
+normalizeDiscreteTargetSubset <- function(discrete.target.subset, tol = 1e-4) {
+  if(is.null(discrete.target.subset) || length(discrete.target.subset) == 0) {
+    return(discrete.target.subset)
+  }
+
+  out <- discrete.target.subset
+  normalized <- character(0)
+
+  for(target.var in names(out)) {
+    strata.vars <- names(out[[target.var]])
+    for(strata.var in strata.vars) {
+      strata.levels <- names(out[[target.var]][[strata.var]])
+      for(strata.level in strata.levels) {
+        label <- paste0(target.var, " [", strata.var, "=", strata.level, "]")
+        result <- validateNormalizeDiscreteTargetVector(
+          out[[target.var]][[strata.var]][[strata.level]],
+          label,
+          tol = tol
+        )
+        out[[target.var]][[strata.var]][[strata.level]] <- result$target
+
+        if(result$normalized) {
+          normalized <- c(normalized, paste0(label, " (sum=",
+                                             formatC(result$target.sum, format = "f", digits = 6),
+                                             ")"))
+        }
+      }
+    }
+  }
+
+  if(length(normalized) > 0) {
+    warning("Normalized discrete.target.subset vectors that summed to less than 1: ",
+            paste(normalized, collapse = ", "))
+  }
+
+  return(out)
+}
+
 weightByDiscrete <- function(sample, var, init.weight, discrete.targets, 
                              max.weights, min.weights, cap.every.var,current.levels)
 {

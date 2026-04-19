@@ -21,7 +21,6 @@ Review scope: static inspection of the current codebase only (no execution or te
 - `rakeTable()` only guards against `Inf` ratios. If both target and current margins are zero, `NaN` can propagate into the table. `R/rakeTable.R`
 - `createContinuousTargets()` uses `n = length(min:max)`. Large or non-integer ranges can produce huge density grids or unintended lengths. `R/createContinuousTargets.R`
 - `calcAgeDensity2()` uses rounding to allocate `survey.n`, so the synthetic age vector length may not equal `survey.n` exactly. `R/calcAgeDensity2.R`
-- The country mapping includes `IL = "ISL"`, which appears to map Israel to Iceland’s HMD code. If unintentional, this yields incorrect mortality lookups. `R/getMortCountries.R`
 - `densitySlim()` passes weights to `stats:::C_BinDist` without explicit validation. If `weights` is `NULL` or length-mismatched, this will error. `R/drakehelpers.R`
 - `drakeClose()` prints the current max weight each iteration, which can be noisy in batch runs or tests. `R/drakeIdeal.R`
 

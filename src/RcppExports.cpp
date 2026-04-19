@@ -23,6 +23,92 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// CWeightByDiscreteMany
+NumericVector CWeightByDiscreteMany(List codes_list, NumericVector weights, List targets_list, bool cap_every_var, double max_weight, double min_weight);
+RcppExport SEXP _drake_CWeightByDiscreteMany(SEXP codes_listSEXP, SEXP weightsSEXP, SEXP targets_listSEXP, SEXP cap_every_varSEXP, SEXP max_weightSEXP, SEXP min_weightSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type codes_list(codes_listSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< List >::type targets_list(targets_listSEXP);
+    Rcpp::traits::input_parameter< bool >::type cap_every_var(cap_every_varSEXP);
+    Rcpp::traits::input_parameter< double >::type max_weight(max_weightSEXP);
+    Rcpp::traits::input_parameter< double >::type min_weight(min_weightSEXP);
+    rcpp_result_gen = Rcpp::wrap(CWeightByDiscreteMany(codes_list, weights, targets_list, cap_every_var, max_weight, min_weight));
+    return rcpp_result_gen;
+END_RCPP
+}
+// CMaxAbsDiscreteDiffMany
+double CMaxAbsDiscreteDiffMany(List codes_list, NumericVector weights, List targets_list);
+RcppExport SEXP _drake_CMaxAbsDiscreteDiffMany(SEXP codes_listSEXP, SEXP weightsSEXP, SEXP targets_listSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type codes_list(codes_listSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< List >::type targets_list(targets_listSEXP);
+    rcpp_result_gen = Rcpp::wrap(CMaxAbsDiscreteDiffMany(codes_list, weights, targets_list));
+    return rcpp_result_gen;
+END_RCPP
+}
+// CWeightByDiscreteSubsetMany
+NumericVector CWeightByDiscreteSubsetMany(List target_code_list, List strata_code_list, NumericVector weights, List targets_by_strata_list, bool cap_every_var, double max_weight, double min_weight);
+RcppExport SEXP _drake_CWeightByDiscreteSubsetMany(SEXP target_code_listSEXP, SEXP strata_code_listSEXP, SEXP weightsSEXP, SEXP targets_by_strata_listSEXP, SEXP cap_every_varSEXP, SEXP max_weightSEXP, SEXP min_weightSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type target_code_list(target_code_listSEXP);
+    Rcpp::traits::input_parameter< List >::type strata_code_list(strata_code_listSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< List >::type targets_by_strata_list(targets_by_strata_listSEXP);
+    Rcpp::traits::input_parameter< bool >::type cap_every_var(cap_every_varSEXP);
+    Rcpp::traits::input_parameter< double >::type max_weight(max_weightSEXP);
+    Rcpp::traits::input_parameter< double >::type min_weight(min_weightSEXP);
+    rcpp_result_gen = Rcpp::wrap(CWeightByDiscreteSubsetMany(target_code_list, strata_code_list, weights, targets_by_strata_list, cap_every_var, max_weight, min_weight));
+    return rcpp_result_gen;
+END_RCPP
+}
+// CBuildGaussianBasis
+NumericMatrix CBuildGaussianBasis(NumericVector x, NumericVector xout, double bw);
+RcppExport SEXP _drake_CBuildGaussianBasis(SEXP xSEXP, SEXP xoutSEXP, SEXP bwSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type xout(xoutSEXP);
+    Rcpp::traits::input_parameter< double >::type bw(bwSEXP);
+    rcpp_result_gen = Rcpp::wrap(CBuildGaussianBasis(x, xout, bw));
+    return rcpp_result_gen;
+END_RCPP
+}
+// CWeightByContinuousBasis
+NumericVector CWeightByContinuousBasis(NumericVector weights, NumericMatrix basis, IntegerVector match_index, NumericVector target_y);
+RcppExport SEXP _drake_CWeightByContinuousBasis(SEXP weightsSEXP, SEXP basisSEXP, SEXP match_indexSEXP, SEXP target_ySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type basis(basisSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type match_index(match_indexSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type target_y(target_ySEXP);
+    rcpp_result_gen = Rcpp::wrap(CWeightByContinuousBasis(weights, basis, match_index, target_y));
+    return rcpp_result_gen;
+END_RCPP
+}
+// CContinuousBasisDiff
+double CContinuousBasisDiff(NumericVector weights, NumericMatrix basis, NumericVector target_y);
+RcppExport SEXP _drake_CContinuousBasisDiff(SEXP weightsSEXP, SEXP basisSEXP, SEXP target_ySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type basis(basisSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type target_y(target_ySEXP);
+    rcpp_result_gen = Rcpp::wrap(CContinuousBasisDiff(weights, basis, target_y));
+    return rcpp_result_gen;
+END_RCPP
+}
 // CMaxAbsDiscreteDiff
 double CMaxAbsDiscreteDiff(IntegerVector codes, NumericVector weights, NumericVector targets);
 RcppExport SEXP _drake_CMaxAbsDiscreteDiff(SEXP codesSEXP, SEXP weightsSEXP, SEXP targetsSEXP) {
@@ -175,6 +261,12 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_drake_CWeightByDiscreteCodes", (DL_FUNC) &_drake_CWeightByDiscreteCodes, 3},
+    {"_drake_CWeightByDiscreteMany", (DL_FUNC) &_drake_CWeightByDiscreteMany, 6},
+    {"_drake_CMaxAbsDiscreteDiffMany", (DL_FUNC) &_drake_CMaxAbsDiscreteDiffMany, 3},
+    {"_drake_CWeightByDiscreteSubsetMany", (DL_FUNC) &_drake_CWeightByDiscreteSubsetMany, 7},
+    {"_drake_CBuildGaussianBasis", (DL_FUNC) &_drake_CBuildGaussianBasis, 3},
+    {"_drake_CWeightByContinuousBasis", (DL_FUNC) &_drake_CWeightByContinuousBasis, 4},
+    {"_drake_CContinuousBasisDiff", (DL_FUNC) &_drake_CContinuousBasisDiff, 3},
     {"_drake_CMaxAbsDiscreteDiff", (DL_FUNC) &_drake_CMaxAbsDiscreteDiff, 3},
     {"_drake_CWeightByDiscreteSubsetCodes", (DL_FUNC) &_drake_CWeightByDiscreteSubsetCodes, 4},
     {"_drake_CMaxAbsDiscreteSubsetDiff", (DL_FUNC) &_drake_CMaxAbsDiscreteSubsetDiff, 4},

@@ -174,6 +174,29 @@ test_that("drake checks mean-target convergence instead of running to maxit", {
   expect_equal(achieved.mean, target.mean, tolerance = 1e-3)
 })
 
+test_that("drake cache key preserves results across repeated calls", {
+  clearDrakePreparedCache()
+
+  w1 <- drake(
+    sample = sample_small,
+    continuous.targets = NULL,
+    discrete.targets = discrete_targets,
+    maxit = 50,
+    check.convergence.every = 5,
+    .cache.key = "test-cache-small"
+  )
+  w2 <- drake(
+    sample = sample_small,
+    continuous.targets = NULL,
+    discrete.targets = discrete_targets,
+    maxit = 50,
+    check.convergence.every = 5,
+    .cache.key = "test-cache-small"
+  )
+
+  expect_equal(w1, w2, tolerance = 1e-12)
+})
+
 
 test_that("drakeClose returns weights", {
   expect_warning({

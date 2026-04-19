@@ -9,6 +9,30 @@ CWeightByDiscreteCodes <- function(codes, weights, targets) {
     .Call("_drake_CWeightByDiscreteCodes", PACKAGE = "drake", codes, weights, targets)
 }
 
+CWeightByDiscreteMany <- function(codes_list, weights, targets_list, cap_every_var = FALSE, max_weight = Inf, min_weight = 0) {
+    .Call("_drake_CWeightByDiscreteMany", PACKAGE = "drake", codes_list, weights, targets_list, cap_every_var, max_weight, min_weight)
+}
+
+CMaxAbsDiscreteDiffMany <- function(codes_list, weights, targets_list) {
+    .Call("_drake_CMaxAbsDiscreteDiffMany", PACKAGE = "drake", codes_list, weights, targets_list)
+}
+
+CWeightByDiscreteSubsetMany <- function(target_code_list, strata_code_list, weights, targets_by_strata_list, cap_every_var = FALSE, max_weight = Inf, min_weight = 0) {
+    .Call("_drake_CWeightByDiscreteSubsetMany", PACKAGE = "drake", target_code_list, strata_code_list, weights, targets_by_strata_list, cap_every_var, max_weight, min_weight)
+}
+
+CBuildGaussianBasis <- function(x, xout, bw) {
+    .Call("_drake_CBuildGaussianBasis", PACKAGE = "drake", x, xout, bw)
+}
+
+CWeightByContinuousBasis <- function(weights, basis, match_index, target_y) {
+    .Call("_drake_CWeightByContinuousBasis", PACKAGE = "drake", weights, basis, match_index, target_y)
+}
+
+CContinuousBasisDiff <- function(weights, basis, target_y) {
+    .Call("_drake_CContinuousBasisDiff", PACKAGE = "drake", weights, basis, target_y)
+}
+
 CMaxAbsDiscreteDiff <- function(codes, weights, targets) {
     .Call("_drake_CMaxAbsDiscreteDiff", PACKAGE = "drake", codes, weights, targets)
 }

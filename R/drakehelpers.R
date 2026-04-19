@@ -169,6 +169,240 @@ maxMeanTargetDiff <- function(sample, weights, mean.targets) {
   }, numeric(1)))
 }
 
+.drakePreparedCache <- new.env(parent = emptyenv())
+.drakeResultCache <- new.env(parent = emptyenv())
+
+clearDrakePreparedCache <- function() {
+  rm(list = ls(.drakePreparedCache, all.names = TRUE), envir = .drakePreparedCache)
+  rm(list = ls(.drakeResultCache, all.names = TRUE), envir = .drakeResultCache)
+  invisible(NULL)
+}
+
+getCachedDrakeResult <- function(cache.key = NULL) {
+  if(is.null(cache.key) || identical(cache.key, "")) {
+    return(NULL)
+  }
+
+  key <- as.character(cache.key)[1L]
+  if(exists(key, envir = .drakeResultCache, inherits = FALSE)) {
+    return(get(key, envir = .drakeResultCache, inherits = FALSE))
+  }
+
+  NULL
+}
+
+setCachedDrakeResult <- function(cache.key = NULL, result) {
+  if(is.null(cache.key) || identical(cache.key, "")) {
+    return(invisible(result))
+  }
+
+  key <- as.character(cache.key)[1L]
+  assign(key, result, envir = .drakeResultCache)
+  invisible(result)
+}
+
+prepareDrakeInputs <- function(sample,
+                               continuous.targets,
+                               discrete.targets,
+                               discrete.target.subset,
+                               mean.targets,
+                               initial.weights,
+                               subset) {
+  discrete.targets <- normalizeDiscreteTargets(discrete.targets, tol = 1e-4)
+  discrete.target.subset <- normalizeDiscreteTargetSubset(discrete.target.subset, tol = 1e-4)
+
+  sample <- as.data.frame(sample, stringsAsFactors = FALSE)
+  n.original <- nrow(sample)
+
+  if(length(initial.weights) == 1L) {
+    initial.weights <- rep(initial.weights, n.original)
+  }
+  if(length(subset) == 1L) {
+    subset <- rep(subset, n.original)
+  }
+  if(length(initial.weights) != n.original) {
+    stop("initial.weights must have length 1 or nrow(sample).")
+  }
+  if(length(subset) != n.original) {
+    stop("subset must have length 1 or nrow(sample).")
+  }
+
+  continuous.names <- names(continuous.targets)
+  discrete.names <- names(discrete.targets)
+  var.names.cont <- continuous.names
+  var.names.discrete <- discrete.names
+  var.names.cont2 <- unlist(lapply(continuous.targets, function(x) names(x)))
+  var.names.mean <- names(mean.targets)
+  var.names.discrete.sub <- names(discrete.target.subset)
+  mean.names <- names(mean.targets)
+  discrete.sub.names <- names(discrete.target.subset)
+
+  if(any(var.names.cont2 %in% c("data.name", "bw"))) {
+    var.names.cont2 <- NULL
+  }
+  var.names.comb <- unique(c(var.names.cont, var.names.discrete, var.names.cont2, var.names.mean))
+
+  initial.weights[initial.weights == 0] <- NA
+
+  sample <- sample[, unique(c(var.names.comb, var.names.discrete.sub)), drop = FALSE]
+
+  valid.cases <- complete.cases(sample[, var.names.comb, drop = FALSE]) &
+    subset & !is.na(initial.weights)
+  valid.cases2 <- rep(TRUE, nrow(sample))
+
+  for(kk in var.names.discrete.sub)   {
+    strata <- names(discrete.target.subset[[kk]])
+    for(strt in strata) {
+      strt.parts <- names(discrete.target.subset[[kk]][[strt]])
+      for(str.single in strt.parts) {
+        valid.cases2[sample[, strt] == str.single & is.na(sample[, kk])] <- FALSE
+      }
+    }
+  }
+  valid.cases <- valid.cases & valid.cases2
+
+  if(!any(valid.cases)) {
+    stop("No valid cases remain after applying filters.")
+  }
+
+  valid.idx <- which(valid.cases)
+  sample <- sample[valid.idx, , drop = FALSE]
+  weights <- as.numeric(initial.weights[valid.idx])
+
+  for(var in discrete.names) {
+    discrete.targets <- fixDiscreteOrder(sample, var, discrete.targets)
+  }
+
+  discrete.levels <- list()
+  discrete.codes <- list()
+
+  discrete.vars <- discrete.names
+  if(!is.null(discrete.target.subset)) {
+    dts.names <- names(discrete.target.subset)
+    dts.names <- c(dts.names, unlist(lapply(dts.names, function(x) names(discrete.target.subset[[x]]))))
+    discrete.vars <- unique(c(discrete.vars, dts.names))
+  }
+
+  if(any(!discrete.vars %in% colnames(sample))) {
+    stop("Discrete var targets not in data: ",
+         paste(discrete.vars[!discrete.vars %in% colnames(sample)], collapse = ";"))
+  }
+
+  for(var in discrete.vars) {
+    column <- sample[[var]]
+
+    if(var %in% names(discrete.targets) && !is.null(names(discrete.targets[[var]]))) {
+      target.levels <- names(discrete.targets[[var]])
+    } else if(var %in% names(discrete.target.subset)) {
+      target.levels <- unique(unlist(lapply(discrete.target.subset[[var]][[1]], names)))
+    } else if(is.factor(column)) {
+      target.levels <- levels(column)
+    } else {
+      target.levels <- sort(unique(as.character(column)))
+    }
+
+    column <- factor(as.character(column), levels = target.levels)
+    sample[[var]] <- column
+    discrete.levels[[var]] <- levels(column)
+    discrete.codes[[var]] <- as.integer(column)
+  }
+
+  subset.target.matrices <- list()
+  subset.target.code.list <- list()
+  subset.strata.code.list <- list()
+  subset.target.matrix.list <- list()
+  if(!is.null(discrete.target.subset)) {
+    for(var in names(discrete.target.subset)) {
+      subset.target.matrices[[var]] <- list()
+      for(strata.var in names(discrete.target.subset[[var]])) {
+        subset.target.matrices[[var]][[strata.var]] <- buildDiscreteSubsetTargetMatrix(
+          discrete.sub = discrete.target.subset[[var]][[strata.var]],
+          target.levels = discrete.levels[[var]],
+          strata.levels = discrete.levels[[strata.var]]
+        )
+        subset.target.code.list[[length(subset.target.code.list) + 1L]] <- discrete.codes[[var]]
+        subset.strata.code.list[[length(subset.strata.code.list) + 1L]] <- discrete.codes[[strata.var]]
+        subset.target.matrix.list[[length(subset.target.matrix.list) + 1L]] <- subset.target.matrices[[var]][[strata.var]]
+      }
+    }
+  }
+
+  discrete.code.list <- if(length(discrete.names) > 0L) unname(discrete.codes[discrete.names]) else list()
+  discrete.target.list <- if(length(discrete.names) > 0L) unname(discrete.targets[discrete.names]) else list()
+
+  continuous.supplement <- list()
+  for(var in continuous.names) {
+    continuous.supplement[[var]] <- createContinuousSupplement(
+      sample = sample,
+      var = var,
+      con.target = continuous.targets[[var]]
+    )
+  }
+
+  weights <- (weights * nrow(sample)) / sum(weights)
+
+  list(
+    sample = sample,
+    weights_start = weights,
+    selection.base.weights = weights,
+    n.original = n.original,
+    valid.idx = valid.idx,
+    continuous.targets = continuous.targets,
+    discrete.targets = discrete.targets,
+    discrete.target.subset = discrete.target.subset,
+    mean.targets = mean.targets,
+    continuous.names = continuous.names,
+    discrete.names = discrete.names,
+    mean.names = mean.names,
+    discrete.codes = discrete.codes,
+    discrete.code.list = discrete.code.list,
+    discrete.target.list = discrete.target.list,
+    subset.target.code.list = subset.target.code.list,
+    subset.strata.code.list = subset.strata.code.list,
+    subset.target.matrix.list = subset.target.matrix.list,
+    continuous.supplement = continuous.supplement,
+    tot.obs = nrow(sample)
+  )
+}
+
+getPreparedDrakeInputs <- function(cache.key = NULL,
+                                   sample,
+                                   continuous.targets,
+                                   discrete.targets,
+                                   discrete.target.subset,
+                                   mean.targets,
+                                   initial.weights,
+                                   subset) {
+  if(is.null(cache.key) || identical(cache.key, "")) {
+    return(prepareDrakeInputs(
+      sample = sample,
+      continuous.targets = continuous.targets,
+      discrete.targets = discrete.targets,
+      discrete.target.subset = discrete.target.subset,
+      mean.targets = mean.targets,
+      initial.weights = initial.weights,
+      subset = subset
+    ))
+  }
+
+  key <- as.character(cache.key)[1L]
+  if(exists(key, envir = .drakePreparedCache, inherits = FALSE)) {
+    return(get(key, envir = .drakePreparedCache, inherits = FALSE))
+  }
+
+  prepared <- prepareDrakeInputs(
+    sample = sample,
+    continuous.targets = continuous.targets,
+    discrete.targets = discrete.targets,
+    discrete.target.subset = discrete.target.subset,
+    mean.targets = mean.targets,
+    initial.weights = initial.weights,
+    subset = subset
+  )
+  assign(key, prepared, envir = .drakePreparedCache)
+  prepared
+}
+
 unirootSlim <- function (f, interval, lower = min(interval), upper = max(interval)) {
   f.lower = f(lower)
   f.upper = f(upper)

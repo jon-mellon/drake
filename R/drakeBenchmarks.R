@@ -196,6 +196,10 @@ makeSubsetTargets <- function(data, target_var, strata_var) {
 }
 
 newDrakeBenchmarkCase <- function(name, description, tags, args, runner = "drake") {
+  if(identical(runner, "drake") && is.null(args$.cache.key)) {
+    args$.cache.key <- paste0("benchmark:", name)
+  }
+
   case <- list(
     name = name,
     description = description,
@@ -209,6 +213,7 @@ newDrakeBenchmarkCase <- function(name, description, tags, args, runner = "drake
 
 drakeBenchmarkCases <- function(profile = c("standard", "quick"), seed = 1L) {
   profile <- match.arg(profile)
+  clearDrakePreparedCache()
   scale <- if(profile == "quick") 0.2 else 1
   density_n <- if(profile == "quick") 64L else 128L
 

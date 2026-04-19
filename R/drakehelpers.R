@@ -7,9 +7,7 @@ wttabSlim <-function (x, weights = NULL,current.levels)
 }
 
 clampWeights <- function(weights, max.weights, min.weights) {
-  weights[weights > max.weights] <- max.weights
-  weights[weights < min.weights] <- min.weights
-  weights
+  CClampWeights(weights, max.weights, min.weights)
 }
 
 nearestDensityGridIndex <- function(x, grid) {
@@ -108,8 +106,7 @@ checkOneContinuousValues <- function(x, weights, con.target, con.supp = NULL) {
 
   weight.vec <- weights / total.weight
   sample.y <- densityPreparedY(supp$x.values, weight.vec, supp$density.prep)
-  sample.y <- sample.y / sum(sample.y)
-  sum(abs(supp$target.y - sample.y))
+  CContinuousDiffFromDensity(sample.y, supp$target.y)
 }
 
 checkContinuousPrepared <- function(weights, con.target, con.supp) {
@@ -251,7 +248,9 @@ prepareDrakeInputs <- function(sample,
   discrete.targets <- normalizeDiscreteTargets(discrete.targets, tol = 1e-4)
   discrete.target.subset <- normalizeDiscreteTargetSubset(discrete.target.subset, tol = 1e-4)
 
-  sample <- as.data.frame(sample, stringsAsFactors = FALSE)
+  if(!is.data.frame(sample)) {
+    sample <- as.data.frame(sample, stringsAsFactors = FALSE)
+  }
   n.original <- nrow(sample)
 
   if(length(initial.weights) == 1L) {
@@ -285,7 +284,16 @@ prepareDrakeInputs <- function(sample,
   initial.weights[initial.weights == 0] <- NA
 
   needed.cols <- unique(c(var.names.comb, var.names.discrete.sub))
-  sample.cols <- as.list(sample[needed.cols])
+  missing.cols <- needed.cols[!needed.cols %in% names(sample)]
+  if(length(missing.cols) > 0L) {
+    stop("Variables not in data: ", paste(missing.cols, collapse = ";"))
+  }
+
+  sample.cols <- vector("list", length(needed.cols))
+  names(sample.cols) <- needed.cols
+  for(ii in seq_along(needed.cols)) {
+    sample.cols[[ii]] <- sample[[needed.cols[[ii]]]]
+  }
 
   valid.cases <- subset & !is.na(initial.weights)
   for(var in var.names.comb) {
@@ -384,7 +392,10 @@ prepareDrakeInputs <- function(sample,
   discrete.rows <- list()
   for(var in continuous.strata.vars) {
     if(!is.null(discrete.codes[[var]])) {
-      discrete.rows[[var]] <- splitRowsByCode(discrete.codes[[var]])
+      discrete.rows[[var]] <- splitRowsByCode(
+        discrete.codes[[var]],
+        nlevels = length(discrete.levels[[var]])
+      )
     }
   }
 
@@ -623,9 +634,7 @@ weightContinuousOnceValues <- function(x, weights, con.target, dens.matches) {
   }
 
   sample.y <- densityPreparedY(x = x, weights = weights, density.prep = supp$density.prep)
-  sample.y <- sample.y / sum(sample.y)
-  ratios <- supp$target.y / sample.y
-  newwt <- ratios[supp$match.index] * weights
+  newwt <- CApplyDensityTarget(weights, supp$match.index, sample.y, supp$target.y)
 
   if(anyNA(newwt)) {
     stop("NAs on weights after raking on continuous target")
@@ -695,9 +704,17 @@ validateContinuousStrataLevels <- function(strat.column, target.values, strat, s
   }
 }
 
-splitRowsByCode <- function(codes) {
-  rows <- which(!is.na(codes))
-  split(rows, codes[rows], drop = TRUE)
+splitRowsByCode <- function(codes, nlevels = NULL) {
+  if(is.null(nlevels)) {
+    valid.codes <- codes[!is.na(codes)]
+    nlevels <- if(length(valid.codes) == 0L) 0L else max(valid.codes)
+  }
+
+  if(nlevels == 0L) {
+    return(vector("list", 0L))
+  }
+
+  CSplitRowsByCode(as.integer(codes), as.integer(nlevels))
 }
 
 createContinuousSupplement <- function(sample, var, con.target,
@@ -746,12 +763,12 @@ createContinuousSupplement <- function(sample, var, con.target,
         } else {
           strat.codes <- encodeDiscreteColumn(sample[[strat]], target.values, strat, strict = FALSE)
         }
-        row.lookup <- splitRowsByCode(strat.codes)
+        row.lookup <- splitRowsByCode(strat.codes, nlevels = length(target.values))
       }
 
       for(code in seq_along(target.values)) {
         kk <- target.values[[code]]
-        row.idx <- row.lookup[[as.character(code)]]
+        row.idx <- row.lookup[[code]]
         if(is.null(row.idx)) {
           row.idx <- integer(0)
         }

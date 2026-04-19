@@ -10,62 +10,54 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// CWeightByDiscreteCodes
-NumericVector CWeightByDiscreteCodes(IntegerVector codes, NumericVector weights, NumericVector targets);
-RcppExport SEXP _drake_CWeightByDiscreteCodes(SEXP codesSEXP, SEXP weightsSEXP, SEXP targetsSEXP) {
+// CSplitRowsByCode
+List CSplitRowsByCode(IntegerVector codes, int nlevels);
+RcppExport SEXP _drake_CSplitRowsByCode(SEXP codesSEXP, SEXP nlevelsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< IntegerVector >::type codes(codesSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type targets(targetsSEXP);
-    rcpp_result_gen = Rcpp::wrap(CWeightByDiscreteCodes(codes, weights, targets));
+    Rcpp::traits::input_parameter< int >::type nlevels(nlevelsSEXP);
+    rcpp_result_gen = Rcpp::wrap(CSplitRowsByCode(codes, nlevels));
     return rcpp_result_gen;
 END_RCPP
 }
-// CWeightByDiscreteMany
-NumericVector CWeightByDiscreteMany(List codes_list, NumericVector weights, List targets_list, bool cap_every_var, double max_weight, double min_weight);
-RcppExport SEXP _drake_CWeightByDiscreteMany(SEXP codes_listSEXP, SEXP weightsSEXP, SEXP targets_listSEXP, SEXP cap_every_varSEXP, SEXP max_weightSEXP, SEXP min_weightSEXP) {
+// CClampWeights
+NumericVector CClampWeights(NumericVector weights, double max_weight, double min_weight);
+RcppExport SEXP _drake_CClampWeights(SEXP weightsSEXP, SEXP max_weightSEXP, SEXP min_weightSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< List >::type codes_list(codes_listSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
-    Rcpp::traits::input_parameter< List >::type targets_list(targets_listSEXP);
-    Rcpp::traits::input_parameter< bool >::type cap_every_var(cap_every_varSEXP);
     Rcpp::traits::input_parameter< double >::type max_weight(max_weightSEXP);
     Rcpp::traits::input_parameter< double >::type min_weight(min_weightSEXP);
-    rcpp_result_gen = Rcpp::wrap(CWeightByDiscreteMany(codes_list, weights, targets_list, cap_every_var, max_weight, min_weight));
+    rcpp_result_gen = Rcpp::wrap(CClampWeights(weights, max_weight, min_weight));
     return rcpp_result_gen;
 END_RCPP
 }
-// CMaxAbsDiscreteDiffMany
-double CMaxAbsDiscreteDiffMany(List codes_list, NumericVector weights, List targets_list);
-RcppExport SEXP _drake_CMaxAbsDiscreteDiffMany(SEXP codes_listSEXP, SEXP weightsSEXP, SEXP targets_listSEXP) {
+// CApplyDensityTarget
+NumericVector CApplyDensityTarget(NumericVector weights, IntegerVector match_index, NumericVector sample_y, NumericVector target_y);
+RcppExport SEXP _drake_CApplyDensityTarget(SEXP weightsSEXP, SEXP match_indexSEXP, SEXP sample_ySEXP, SEXP target_ySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< List >::type codes_list(codes_listSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
-    Rcpp::traits::input_parameter< List >::type targets_list(targets_listSEXP);
-    rcpp_result_gen = Rcpp::wrap(CMaxAbsDiscreteDiffMany(codes_list, weights, targets_list));
+    Rcpp::traits::input_parameter< IntegerVector >::type match_index(match_indexSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type sample_y(sample_ySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type target_y(target_ySEXP);
+    rcpp_result_gen = Rcpp::wrap(CApplyDensityTarget(weights, match_index, sample_y, target_y));
     return rcpp_result_gen;
 END_RCPP
 }
-// CWeightByDiscreteSubsetMany
-NumericVector CWeightByDiscreteSubsetMany(List target_code_list, List strata_code_list, NumericVector weights, List targets_by_strata_list, bool cap_every_var, double max_weight, double min_weight);
-RcppExport SEXP _drake_CWeightByDiscreteSubsetMany(SEXP target_code_listSEXP, SEXP strata_code_listSEXP, SEXP weightsSEXP, SEXP targets_by_strata_listSEXP, SEXP cap_every_varSEXP, SEXP max_weightSEXP, SEXP min_weightSEXP) {
+// CContinuousDiffFromDensity
+double CContinuousDiffFromDensity(NumericVector sample_y, NumericVector target_y);
+RcppExport SEXP _drake_CContinuousDiffFromDensity(SEXP sample_ySEXP, SEXP target_ySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< List >::type target_code_list(target_code_listSEXP);
-    Rcpp::traits::input_parameter< List >::type strata_code_list(strata_code_listSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
-    Rcpp::traits::input_parameter< List >::type targets_by_strata_list(targets_by_strata_listSEXP);
-    Rcpp::traits::input_parameter< bool >::type cap_every_var(cap_every_varSEXP);
-    Rcpp::traits::input_parameter< double >::type max_weight(max_weightSEXP);
-    Rcpp::traits::input_parameter< double >::type min_weight(min_weightSEXP);
-    rcpp_result_gen = Rcpp::wrap(CWeightByDiscreteSubsetMany(target_code_list, strata_code_list, weights, targets_by_strata_list, cap_every_var, max_weight, min_weight));
+    Rcpp::traits::input_parameter< NumericVector >::type sample_y(sample_ySEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type target_y(target_ySEXP);
+    rcpp_result_gen = Rcpp::wrap(CContinuousDiffFromDensity(sample_y, target_y));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -137,6 +129,65 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type bw(bwSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type target_y(target_ySEXP);
     rcpp_result_gen = Rcpp::wrap(CContinuousGaussianDiff(x, weights, xout, bw, target_y));
+    return rcpp_result_gen;
+END_RCPP
+}
+// CWeightByDiscreteMany
+NumericVector CWeightByDiscreteMany(List codes_list, NumericVector weights, List targets_list, bool cap_every_var, double max_weight, double min_weight);
+RcppExport SEXP _drake_CWeightByDiscreteMany(SEXP codes_listSEXP, SEXP weightsSEXP, SEXP targets_listSEXP, SEXP cap_every_varSEXP, SEXP max_weightSEXP, SEXP min_weightSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type codes_list(codes_listSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< List >::type targets_list(targets_listSEXP);
+    Rcpp::traits::input_parameter< bool >::type cap_every_var(cap_every_varSEXP);
+    Rcpp::traits::input_parameter< double >::type max_weight(max_weightSEXP);
+    Rcpp::traits::input_parameter< double >::type min_weight(min_weightSEXP);
+    rcpp_result_gen = Rcpp::wrap(CWeightByDiscreteMany(codes_list, weights, targets_list, cap_every_var, max_weight, min_weight));
+    return rcpp_result_gen;
+END_RCPP
+}
+// CMaxAbsDiscreteDiffMany
+double CMaxAbsDiscreteDiffMany(List codes_list, NumericVector weights, List targets_list);
+RcppExport SEXP _drake_CMaxAbsDiscreteDiffMany(SEXP codes_listSEXP, SEXP weightsSEXP, SEXP targets_listSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type codes_list(codes_listSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< List >::type targets_list(targets_listSEXP);
+    rcpp_result_gen = Rcpp::wrap(CMaxAbsDiscreteDiffMany(codes_list, weights, targets_list));
+    return rcpp_result_gen;
+END_RCPP
+}
+// CWeightByDiscreteSubsetMany
+NumericVector CWeightByDiscreteSubsetMany(List target_code_list, List strata_code_list, NumericVector weights, List targets_by_strata_list, bool cap_every_var, double max_weight, double min_weight);
+RcppExport SEXP _drake_CWeightByDiscreteSubsetMany(SEXP target_code_listSEXP, SEXP strata_code_listSEXP, SEXP weightsSEXP, SEXP targets_by_strata_listSEXP, SEXP cap_every_varSEXP, SEXP max_weightSEXP, SEXP min_weightSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type target_code_list(target_code_listSEXP);
+    Rcpp::traits::input_parameter< List >::type strata_code_list(strata_code_listSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< List >::type targets_by_strata_list(targets_by_strata_listSEXP);
+    Rcpp::traits::input_parameter< bool >::type cap_every_var(cap_every_varSEXP);
+    Rcpp::traits::input_parameter< double >::type max_weight(max_weightSEXP);
+    Rcpp::traits::input_parameter< double >::type min_weight(min_weightSEXP);
+    rcpp_result_gen = Rcpp::wrap(CWeightByDiscreteSubsetMany(target_code_list, strata_code_list, weights, targets_by_strata_list, cap_every_var, max_weight, min_weight));
+    return rcpp_result_gen;
+END_RCPP
+}
+// CWeightByDiscreteCodes
+NumericVector CWeightByDiscreteCodes(IntegerVector codes, NumericVector weights, NumericVector targets);
+RcppExport SEXP _drake_CWeightByDiscreteCodes(SEXP codesSEXP, SEXP weightsSEXP, SEXP targetsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< IntegerVector >::type codes(codesSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type targets(targetsSEXP);
+    rcpp_result_gen = Rcpp::wrap(CWeightByDiscreteCodes(codes, weights, targets));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -291,15 +342,19 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_drake_CWeightByDiscreteCodes", (DL_FUNC) &_drake_CWeightByDiscreteCodes, 3},
-    {"_drake_CWeightByDiscreteMany", (DL_FUNC) &_drake_CWeightByDiscreteMany, 6},
-    {"_drake_CMaxAbsDiscreteDiffMany", (DL_FUNC) &_drake_CMaxAbsDiscreteDiffMany, 3},
-    {"_drake_CWeightByDiscreteSubsetMany", (DL_FUNC) &_drake_CWeightByDiscreteSubsetMany, 7},
+    {"_drake_CSplitRowsByCode", (DL_FUNC) &_drake_CSplitRowsByCode, 2},
+    {"_drake_CClampWeights", (DL_FUNC) &_drake_CClampWeights, 3},
+    {"_drake_CApplyDensityTarget", (DL_FUNC) &_drake_CApplyDensityTarget, 4},
+    {"_drake_CContinuousDiffFromDensity", (DL_FUNC) &_drake_CContinuousDiffFromDensity, 2},
     {"_drake_CBuildGaussianBasis", (DL_FUNC) &_drake_CBuildGaussianBasis, 3},
     {"_drake_CWeightByContinuousBasis", (DL_FUNC) &_drake_CWeightByContinuousBasis, 4},
     {"_drake_CContinuousBasisDiff", (DL_FUNC) &_drake_CContinuousBasisDiff, 3},
     {"_drake_CWeightByContinuousGaussian", (DL_FUNC) &_drake_CWeightByContinuousGaussian, 6},
     {"_drake_CContinuousGaussianDiff", (DL_FUNC) &_drake_CContinuousGaussianDiff, 5},
+    {"_drake_CWeightByDiscreteMany", (DL_FUNC) &_drake_CWeightByDiscreteMany, 6},
+    {"_drake_CMaxAbsDiscreteDiffMany", (DL_FUNC) &_drake_CMaxAbsDiscreteDiffMany, 3},
+    {"_drake_CWeightByDiscreteSubsetMany", (DL_FUNC) &_drake_CWeightByDiscreteSubsetMany, 7},
+    {"_drake_CWeightByDiscreteCodes", (DL_FUNC) &_drake_CWeightByDiscreteCodes, 3},
     {"_drake_CMaxAbsDiscreteDiff", (DL_FUNC) &_drake_CMaxAbsDiscreteDiff, 3},
     {"_drake_CWeightByDiscreteSubsetCodes", (DL_FUNC) &_drake_CWeightByDiscreteSubsetCodes, 4},
     {"_drake_CMaxAbsDiscreteSubsetDiff", (DL_FUNC) &_drake_CMaxAbsDiscreteSubsetDiff, 4},

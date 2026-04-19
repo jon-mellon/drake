@@ -5,20 +5,20 @@ if(!"Rcpp" %in% loadedNamespaces()) {
     loadNamespace("Rcpp")
 }
 
-CWeightByDiscreteCodes <- function(codes, weights, targets) {
-    .Call("_drake_CWeightByDiscreteCodes", PACKAGE = "drake", codes, weights, targets)
+CSplitRowsByCode <- function(codes, nlevels) {
+    .Call("_drake_CSplitRowsByCode", PACKAGE = "drake", codes, nlevels)
 }
 
-CWeightByDiscreteMany <- function(codes_list, weights, targets_list, cap_every_var = FALSE, max_weight = Inf, min_weight = 0) {
-    .Call("_drake_CWeightByDiscreteMany", PACKAGE = "drake", codes_list, weights, targets_list, cap_every_var, max_weight, min_weight)
+CClampWeights <- function(weights, max_weight, min_weight) {
+    .Call("_drake_CClampWeights", PACKAGE = "drake", weights, max_weight, min_weight)
 }
 
-CMaxAbsDiscreteDiffMany <- function(codes_list, weights, targets_list) {
-    .Call("_drake_CMaxAbsDiscreteDiffMany", PACKAGE = "drake", codes_list, weights, targets_list)
+CApplyDensityTarget <- function(weights, match_index, sample_y, target_y) {
+    .Call("_drake_CApplyDensityTarget", PACKAGE = "drake", weights, match_index, sample_y, target_y)
 }
 
-CWeightByDiscreteSubsetMany <- function(target_code_list, strata_code_list, weights, targets_by_strata_list, cap_every_var = FALSE, max_weight = Inf, min_weight = 0) {
-    .Call("_drake_CWeightByDiscreteSubsetMany", PACKAGE = "drake", target_code_list, strata_code_list, weights, targets_by_strata_list, cap_every_var, max_weight, min_weight)
+CContinuousDiffFromDensity <- function(sample_y, target_y) {
+    .Call("_drake_CContinuousDiffFromDensity", PACKAGE = "drake", sample_y, target_y)
 }
 
 CBuildGaussianBasis <- function(x, xout, bw) {
@@ -39,6 +39,22 @@ CWeightByContinuousGaussian <- function(x, weights, xout, bw, match_index, targe
 
 CContinuousGaussianDiff <- function(x, weights, xout, bw, target_y) {
     .Call("_drake_CContinuousGaussianDiff", PACKAGE = "drake", x, weights, xout, bw, target_y)
+}
+
+CWeightByDiscreteMany <- function(codes_list, weights, targets_list, cap_every_var = FALSE, max_weight = Inf, min_weight = 0) {
+    .Call("_drake_CWeightByDiscreteMany", PACKAGE = "drake", codes_list, weights, targets_list, cap_every_var, max_weight, min_weight)
+}
+
+CMaxAbsDiscreteDiffMany <- function(codes_list, weights, targets_list) {
+    .Call("_drake_CMaxAbsDiscreteDiffMany", PACKAGE = "drake", codes_list, weights, targets_list)
+}
+
+CWeightByDiscreteSubsetMany <- function(target_code_list, strata_code_list, weights, targets_by_strata_list, cap_every_var = FALSE, max_weight = Inf, min_weight = 0) {
+    .Call("_drake_CWeightByDiscreteSubsetMany", PACKAGE = "drake", target_code_list, strata_code_list, weights, targets_by_strata_list, cap_every_var, max_weight, min_weight)
+}
+
+CWeightByDiscreteCodes <- function(codes, weights, targets) {
+    .Call("_drake_CWeightByDiscreteCodes", PACKAGE = "drake", codes, weights, targets)
 }
 
 CMaxAbsDiscreteDiff <- function(codes, weights, targets) {

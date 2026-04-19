@@ -104,6 +104,105 @@ NumericVector weighted_gaussian_density(NumericVector x,
 } // namespace
 
 // [[Rcpp::export]]
+List CSplitRowsByCode(IntegerVector codes, int nlevels) {
+  if (nlevels < 0) {
+    stop("nlevels must be non-negative");
+  }
+
+  std::vector<int> counts(nlevels, 0);
+  int n = codes.size();
+
+  for (int i = 0; i < n; ++i) {
+    int code = codes[i];
+    if (is_valid_code(code, nlevels)) {
+      counts[code - 1] += 1;
+    }
+  }
+
+  List out(nlevels);
+  std::vector<int> positions(nlevels, 0);
+
+  for (int level = 0; level < nlevels; ++level) {
+    out[level] = IntegerVector(counts[level]);
+  }
+
+  for (int i = 0; i < n; ++i) {
+    int code = codes[i];
+    if (is_valid_code(code, nlevels)) {
+      IntegerVector rows = out[code - 1];
+      rows[positions[code - 1]] = i + 1;
+      positions[code - 1] += 1;
+    }
+  }
+
+  return out;
+}
+
+// [[Rcpp::export]]
+NumericVector CClampWeights(NumericVector weights, double max_weight, double min_weight) {
+  NumericVector out = clone(weights);
+  clamp_weights_inplace(out, max_weight, min_weight);
+  return out;
+}
+
+// [[Rcpp::export]]
+NumericVector CApplyDensityTarget(NumericVector weights,
+                                  IntegerVector match_index,
+                                  NumericVector sample_y,
+                                  NumericVector target_y) {
+  int n = weights.size();
+  int m = sample_y.size();
+
+  if (match_index.size() != n) {
+    stop("weights and match_index lengths do not match");
+  }
+  if (target_y.size() != m) {
+    stop("sample_y and target_y lengths do not match");
+  }
+
+  double total = std::accumulate(sample_y.begin(), sample_y.end(), 0.0);
+  if (!R_finite(total) || total <= 0.0) {
+    return clone(weights);
+  }
+
+  NumericVector ratios(m);
+  for (int j = 0; j < m; ++j) {
+    ratios[j] = (sample_y[j] > 0.0) ? (target_y[j] * total / sample_y[j]) : 1.0;
+  }
+
+  NumericVector out = clone(weights);
+  for (int i = 0; i < n; ++i) {
+    int idx = match_index[i];
+    if (is_valid_code(idx, m) && is_finite_weight(out[i])) {
+      out[i] *= ratios[idx - 1];
+    }
+  }
+
+  return out;
+}
+
+// [[Rcpp::export]]
+double CContinuousDiffFromDensity(NumericVector sample_y, NumericVector target_y) {
+  int m = sample_y.size();
+
+  if (target_y.size() != m) {
+    stop("sample_y and target_y lengths do not match");
+  }
+
+  double total = std::accumulate(sample_y.begin(), sample_y.end(), 0.0);
+  if (!R_finite(total) || total <= 0.0) {
+    return NA_REAL;
+  }
+
+  double diff_sum = 0.0;
+  for (int j = 0; j < m; ++j) {
+    diff_sum += std::fabs(target_y[j] - (sample_y[j] / total));
+  }
+
+  return diff_sum;
+}
+
+// [[Rcpp::export]]
 NumericMatrix CBuildGaussianBasis(NumericVector x, NumericVector xout, double bw) {
   int n = x.size();
   int m = xout.size();

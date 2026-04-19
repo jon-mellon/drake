@@ -63,6 +63,30 @@ test_that("Rcpp wrappers are available when shared library is loaded", {
   )
   expect_true(is.numeric(discrete_many_diff))
 
+  split_rows <- CSplitRowsByCode(c(2L, NA_integer_, 1L, 2L), 3L)
+  expect_length(split_rows, 3)
+  expect_equal(split_rows[[1]], 3L)
+  expect_equal(split_rows[[2]], c(1L, 4L))
+  expect_equal(split_rows[[3]], integer(0))
+
+  clamped <- CClampWeights(c(0.01, 1, 100, NA_real_), 10, 0.1)
+  expect_equal(clamped[1:3], c(0.1, 1, 10))
+  expect_true(is.na(clamped[[4]]))
+
+  density_applied <- CApplyDensityTarget(
+    weights = c(1, 2),
+    match_index = c(1L, 2L),
+    sample_y = c(4, 1),
+    target_y = c(0.5, 0.5)
+  )
+  expect_equal(density_applied, c(0.625, 5), tolerance = 1e-8)
+
+  density_diff <- CContinuousDiffFromDensity(
+    sample_y = c(4, 1),
+    target_y = c(0.5, 0.5)
+  )
+  expect_equal(density_diff, 0.6, tolerance = 1e-8)
+
   subset_many <- CWeightByDiscreteSubsetMany(
     target_code_list = list(c(1L, 2L, 1L, 2L)),
     strata_code_list = list(c(1L, 1L, 2L, 2L)),

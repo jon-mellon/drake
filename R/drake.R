@@ -98,20 +98,13 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
                   check.convergence.every = 100,
                   extreme.weight.warning = 0.01,
                   RR = NULL,
-                  selection.weights = FALSE,
-                  .cache.key = NULL) {
+                  selection.weights = FALSE) {
   min.cap <- !is.null(RR) && selection.weights
 
   if(debug) {
     browser()
   }
-  cached.result <- getCachedDrakeResult(.cache.key)
-  if(!is.null(cached.result)) {
-    return(cached.result)
-  }
-
-  prepared <- getPreparedDrakeInputs(
-    cache.key = .cache.key,
+  prepared <- prepareDrakeInputs(
     sample = sample,
     continuous.targets = continuous.targets,
     discrete.targets = discrete.targets,
@@ -257,6 +250,5 @@ drake <- function(sample, continuous.targets = NULL, discrete.targets,
   if(high.weight.share > extreme.weight.warning) {
     warning(high.weight.share * 100, "% of weights are close to higher weight limit")
   }
-  setCachedDrakeResult(.cache.key, output.weights)
   return(output.weights)
 }

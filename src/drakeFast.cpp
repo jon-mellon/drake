@@ -66,6 +66,41 @@ NumericVector weighted_basis_density(NumericVector weights, NumericMatrix basis)
   return out;
 }
 
+NumericVector weighted_gaussian_density(NumericVector x,
+                                        NumericVector weights,
+                                        NumericVector xout,
+                                        double bw) {
+  int n = x.size();
+  int m = xout.size();
+
+  if (weights.size() != n) {
+    stop("x and weights lengths do not match");
+  }
+  if (!R_finite(bw) || bw <= 0.0) {
+    stop("bw must be a positive finite value");
+  }
+
+  NumericVector out(m);
+  double inv_two_bw_sq = 0.5 / (bw * bw);
+
+  for (int j = 0; j < m; ++j) {
+    double target = xout[j];
+    double sum = 0.0;
+
+    for (int i = 0; i < n; ++i) {
+      double weight = weights[i];
+      if (is_finite_weight(weight)) {
+        double diff = x[i] - target;
+        sum += weight * std::exp(-(diff * diff) * inv_two_bw_sq);
+      }
+    }
+
+    out[j] = sum;
+  }
+
+  return out;
+}
+
 } // namespace
 
 // [[Rcpp::export]]
@@ -148,6 +183,80 @@ double CContinuousBasisDiff(NumericVector weights,
   }
 
   NumericVector sample_y = weighted_basis_density(weights, basis);
+  double total = std::accumulate(sample_y.begin(), sample_y.end(), 0.0);
+
+  if (!R_finite(total) || total <= 0.0) {
+    return NA_REAL;
+  }
+
+  double diff_sum = 0.0;
+  for (int j = 0; j < m; ++j) {
+    diff_sum += std::fabs(target_y[j] - (sample_y[j] / total));
+  }
+
+  return diff_sum;
+}
+
+// [[Rcpp::export]]
+NumericVector CWeightByContinuousGaussian(NumericVector x,
+                                          NumericVector weights,
+                                          NumericVector xout,
+                                          double bw,
+                                          IntegerVector match_index,
+                                          NumericVector target_y) {
+  int n = x.size();
+  int m = xout.size();
+
+  if (weights.size() != n) {
+    stop("x and weights lengths do not match");
+  }
+  if (match_index.size() != n) {
+    stop("x and match_index lengths do not match");
+  }
+  if (target_y.size() != m) {
+    stop("target_y and xout lengths do not match");
+  }
+
+  NumericVector sample_y = weighted_gaussian_density(x, weights, xout, bw);
+  double total = std::accumulate(sample_y.begin(), sample_y.end(), 0.0);
+
+  if (!R_finite(total) || total <= 0.0) {
+    return clone(weights);
+  }
+
+  NumericVector ratios(m);
+  for (int j = 0; j < m; ++j) {
+    ratios[j] = (sample_y[j] > 0.0) ? (target_y[j] * total / sample_y[j]) : 1.0;
+  }
+
+  NumericVector out = clone(weights);
+  for (int i = 0; i < n; ++i) {
+    int idx = match_index[i];
+    if (is_valid_code(idx, m) && is_finite_weight(out[i])) {
+      out[i] *= ratios[idx - 1];
+    }
+  }
+
+  return out;
+}
+
+// [[Rcpp::export]]
+double CContinuousGaussianDiff(NumericVector x,
+                               NumericVector weights,
+                               NumericVector xout,
+                               double bw,
+                               NumericVector target_y) {
+  int n = x.size();
+  int m = xout.size();
+
+  if (weights.size() != n) {
+    stop("x and weights lengths do not match");
+  }
+  if (target_y.size() != m) {
+    stop("target_y and xout lengths do not match");
+  }
+
+  NumericVector sample_y = weighted_gaussian_density(x, weights, xout, bw);
   double total = std::accumulate(sample_y.begin(), sample_y.end(), 0.0);
 
   if (!R_finite(total) || total <= 0.0) {

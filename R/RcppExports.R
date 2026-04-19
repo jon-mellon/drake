@@ -33,6 +33,14 @@ CContinuousBasisDiff <- function(weights, basis, target_y) {
     .Call("_drake_CContinuousBasisDiff", PACKAGE = "drake", weights, basis, target_y)
 }
 
+CWeightByContinuousGaussian <- function(x, weights, xout, bw, match_index, target_y) {
+    .Call("_drake_CWeightByContinuousGaussian", PACKAGE = "drake", x, weights, xout, bw, match_index, target_y)
+}
+
+CContinuousGaussianDiff <- function(x, weights, xout, bw, target_y) {
+    .Call("_drake_CContinuousGaussianDiff", PACKAGE = "drake", x, weights, xout, bw, target_y)
+}
+
 CMaxAbsDiscreteDiff <- function(codes, weights, targets) {
     .Call("_drake_CMaxAbsDiscreteDiff", PACKAGE = "drake", codes, weights, targets)
 }

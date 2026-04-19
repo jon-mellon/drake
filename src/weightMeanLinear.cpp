@@ -349,81 +349,179 @@ double HiZero ( double a, double b, double t,
 }
 
 
+double MeanFunctionDirect(double k,
+                          NumericVector weight,
+                          NumericVector var,
+                          double meantarget,
+                          bool raise_mean) {
+  double logk = std::log(k);
+  double numerator = 0.0;
+  double denominator = 0.0;
+  int n = var.size();
+
+  for(int i = 0; i < n; ++i) {
+    double diff = std::fabs(meantarget - var[i]) + 1.0;
+    double factor = std::exp(logk * diff);
+    bool below_target = var[i] < meantarget;
+    double adjusted_weight;
+
+    if(below_target == raise_mean) {
+      adjusted_weight = weight[i] / factor;
+    } else {
+      adjusted_weight = weight[i] * factor;
+    }
+
+    numerator += adjusted_weight * var[i];
+    denominator += adjusted_weight;
+  }
+
+  return (numerator / denominator) - meantarget;
+}
+
+double MeanZeroDirect(double a,
+                      double b,
+                      double t,
+                      NumericVector weight,
+                      NumericVector var,
+                      double meantarget,
+                      bool raise_mean) {
+  double c;
+  double d;
+  double e;
+  double fa;
+  double fb;
+  double fc;
+  double m;
+  double macheps;
+  double p;
+  double q;
+  double r;
+  double s;
+  double sa;
+  double sb;
+  double tol;
+
+  sa = a;
+  sb = b;
+  fa = MeanFunctionDirect(sa, weight, var, meantarget, raise_mean);
+  fb = MeanFunctionDirect(sb, weight, var, meantarget, raise_mean);
+
+  c = sa;
+  fc = fa;
+  e = sb - sa;
+  d = e;
+  macheps = 2.220446049250313E-016;
+
+  for( ; ; ) {
+    if (std::fabs(fc) < std::fabs(fb)) {
+      sa = sb;
+      sb = c;
+      c = sa;
+      fa = fb;
+      fb = fc;
+      fc = fa;
+    }
+
+    tol = 2.0 * macheps * std::fabs(sb) + t;
+    m = 0.5 * (c - sb);
+
+    if (std::fabs(m) <= tol || fb == 0.0) {
+      break;
+    }
+
+    if (std::fabs(e) < tol || std::fabs(fa) <= std::fabs(fb)) {
+      e = m;
+      d = e;
+    } else {
+      s = fb / fa;
+
+      if (sa == c) {
+        p = 2.0 * m * s;
+        q = 1.0 - s;
+      } else {
+        q = fa / fc;
+        r = fb / fc;
+        p = s * (2.0 * m * q * (q - r) - (sb - sa) * (r - 1.0));
+        q = (q - 1.0) * (r - 1.0) * (s - 1.0);
+      }
+
+      if (0.0 < p) {
+        q = -q;
+      } else {
+        p = -p;
+      }
+
+      s = e;
+      e = d;
+
+      if (2.0 * p < 3.0 * m * q - std::fabs(tol * q) &&
+          p < std::fabs(0.5 * s * q)) {
+        d = p / q;
+      } else {
+        e = m;
+        d = e;
+      }
+    }
+
+    sa = sb;
+    fa = fb;
+
+    if (tol < std::fabs(d)) {
+      sb = sb + d;
+    } else if (0.0 < m) {
+      sb = sb + tol;
+    } else {
+      sb = sb - tol;
+    }
+
+    fb = MeanFunctionDirect(sb, weight, var, meantarget, raise_mean);
+
+    if ((0.0 < fb && 0.0 < fc) || (fb <= 0.0 && fc <= 0.0)) {
+      c = sa;
+      fc = fa;
+      e = sb - sa;
+      d = e;
+    }
+  }
+
+  return sb;
+}
+
+
 
 // [[Rcpp::export]]
 NumericVector CWeightByMeanLinear(NumericVector weight, NumericVector var, double meantarget) {
-  int size = var.length();
-  NumericVector vw = var * weight;
-  double vwsum = sum(vw);
-  double wtsum = sum(weight);
-  double currentmean = vwsum / wtsum;
-  NumericVector diff(size);
-  LogicalVector hilo(size);
-  
-  // diff = log(abs(meantarget - var) + 1);
-  diff = abs(meantarget - var);
-  hilo = var < meantarget;
-  
-  // this is an optimization that would work in R too:
-  NumericVector lovw = vw[hilo];
-  NumericVector hivw= vw[!hilo];
-  NumericVector lodiff = diff[hilo];
-  lodiff = lodiff + 1;
-  NumericVector hidiff= diff[!hilo];
-  hidiff = hidiff + 1;
-  NumericVector loweight = weight[hilo];
-  NumericVector hiweight = weight[!hilo];
-  int lolength = lodiff.size();
-  int hilength = hidiff.size();
-  double k;
-  NumericVector kpowdifflo(lolength);
-  NumericVector kpowdiffhi(hilength);
-  NumericVector newloweight(lolength);
-  NumericVector newhiweight(hilength);
-  
-  
-  if(currentmean<meantarget) {
-    k= LoZero(1, 20, 1.490116e-08, 
-                     hivw, lovw, 
-                     hidiff,  lodiff, 
-                     loweight, hiweight, 
-                     meantarget, hilength, lolength);
-    
-    for(int i = 0; i < lolength; ++i) {
-      kpowdifflo[i] = pow(k, (lodiff[i]));  
-      newloweight[i] = loweight[i] / kpowdifflo[i];
-    }
-    //newloweight  = loweight / kpowdifflo;
-    
-    for(int i = 0; i < hilength; ++i) {
-      kpowdiffhi[i] = pow(k, (hidiff[i]));  
-      newhiweight[i] = hiweight[i] * kpowdiffhi[i];
-    }
-    
-    weight[hilo] = newloweight;
-    weight[!hilo] = newhiweight;
-  } else {
-    k= HiZero(1, 20, 1.490116e-08, 
-                     hivw, lovw, 
-                     hidiff,  lodiff, 
-                     loweight, hiweight, 
-                     meantarget, hilength, lolength);
-    for(int i = 0; i < lolength; ++i) {
-      kpowdifflo[i] = pow(k, (lodiff[i]));  
-      newloweight[i] = loweight[i] * kpowdifflo[i];
-    }
-    //newloweight  = loweight * kpowdifflo;
-    
-    for(int i = 0; i < hilength; ++i) {
-      kpowdiffhi[i] = pow(k, (hidiff[i]));  
-      newhiweight[i] = hiweight[i] / kpowdiffhi[i];
-    }
+  int n = var.size();
+  double numerator = 0.0;
+  double denominator = 0.0;
 
-    weight[hilo] = newloweight;
-    weight[!hilo] = newhiweight;
+  for(int i = 0; i < n; ++i) {
+    numerator += var[i] * weight[i];
+    denominator += weight[i];
   }
-  
-  return  weight;
+
+  double currentmean = numerator / denominator;
+  if(currentmean == meantarget) {
+    return weight;
+  }
+
+  bool raise_mean = currentmean < meantarget;
+  double k = MeanZeroDirect(1.0, 20.0, 1.490116e-08, weight, var, meantarget, raise_mean);
+  double logk = std::log(k);
+
+  for(int i = 0; i < n; ++i) {
+    double diff = std::fabs(meantarget - var[i]) + 1.0;
+    double factor = std::exp(logk * diff);
+    bool below_target = var[i] < meantarget;
+
+    if(below_target == raise_mean) {
+      weight[i] = weight[i] / factor;
+    } else {
+      weight[i] = weight[i] * factor;
+    }
+  }
+
+  return weight;
 }
 
 

@@ -27,6 +27,27 @@ test_that("Rcpp wrappers are available when shared library is loaded", {
   expect_true(is.numeric(cont_diff))
   expect_true(is.finite(cont_diff))
 
+  cont_gauss_weights <- CWeightByContinuousGaussian(
+    x = c(0, 1),
+    weights = c(1, 2),
+    xout = c(0, 0.5, 1),
+    bw = 0.5,
+    match_index = c(1L, 3L),
+    target_y = c(0.3, 0.4, 0.3)
+  )
+  expect_length(cont_gauss_weights, 2)
+  expect_true(all(is.finite(cont_gauss_weights)))
+
+  cont_gauss_diff <- CContinuousGaussianDiff(
+    x = c(0, 1),
+    weights = c(1, 2),
+    xout = c(0, 0.5, 1),
+    bw = 0.5,
+    target_y = c(0.3, 0.4, 0.3)
+  )
+  expect_true(is.numeric(cont_gauss_diff))
+  expect_true(is.finite(cont_gauss_diff))
+
   discrete_many <- CWeightByDiscreteMany(
     codes_list = list(c(1L, 2L, 1L), c(1L, 1L, 2L)),
     weights = c(1, 1, 1),

@@ -109,6 +109,37 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// CWeightByContinuousGaussian
+NumericVector CWeightByContinuousGaussian(NumericVector x, NumericVector weights, NumericVector xout, double bw, IntegerVector match_index, NumericVector target_y);
+RcppExport SEXP _drake_CWeightByContinuousGaussian(SEXP xSEXP, SEXP weightsSEXP, SEXP xoutSEXP, SEXP bwSEXP, SEXP match_indexSEXP, SEXP target_ySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type xout(xoutSEXP);
+    Rcpp::traits::input_parameter< double >::type bw(bwSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type match_index(match_indexSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type target_y(target_ySEXP);
+    rcpp_result_gen = Rcpp::wrap(CWeightByContinuousGaussian(x, weights, xout, bw, match_index, target_y));
+    return rcpp_result_gen;
+END_RCPP
+}
+// CContinuousGaussianDiff
+double CContinuousGaussianDiff(NumericVector x, NumericVector weights, NumericVector xout, double bw, NumericVector target_y);
+RcppExport SEXP _drake_CContinuousGaussianDiff(SEXP xSEXP, SEXP weightsSEXP, SEXP xoutSEXP, SEXP bwSEXP, SEXP target_ySEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type x(xSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type weights(weightsSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type xout(xoutSEXP);
+    Rcpp::traits::input_parameter< double >::type bw(bwSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type target_y(target_ySEXP);
+    rcpp_result_gen = Rcpp::wrap(CContinuousGaussianDiff(x, weights, xout, bw, target_y));
+    return rcpp_result_gen;
+END_RCPP
+}
 // CMaxAbsDiscreteDiff
 double CMaxAbsDiscreteDiff(IntegerVector codes, NumericVector weights, NumericVector targets);
 RcppExport SEXP _drake_CMaxAbsDiscreteDiff(SEXP codesSEXP, SEXP weightsSEXP, SEXP targetsSEXP) {
@@ -267,6 +298,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_drake_CBuildGaussianBasis", (DL_FUNC) &_drake_CBuildGaussianBasis, 3},
     {"_drake_CWeightByContinuousBasis", (DL_FUNC) &_drake_CWeightByContinuousBasis, 4},
     {"_drake_CContinuousBasisDiff", (DL_FUNC) &_drake_CContinuousBasisDiff, 3},
+    {"_drake_CWeightByContinuousGaussian", (DL_FUNC) &_drake_CWeightByContinuousGaussian, 6},
+    {"_drake_CContinuousGaussianDiff", (DL_FUNC) &_drake_CContinuousGaussianDiff, 5},
     {"_drake_CMaxAbsDiscreteDiff", (DL_FUNC) &_drake_CMaxAbsDiscreteDiff, 3},
     {"_drake_CWeightByDiscreteSubsetCodes", (DL_FUNC) &_drake_CWeightByDiscreteSubsetCodes, 4},
     {"_drake_CMaxAbsDiscreteSubsetDiff", (DL_FUNC) &_drake_CMaxAbsDiscreteSubsetDiff, 4},

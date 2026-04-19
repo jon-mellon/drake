@@ -17,19 +17,27 @@ nearestDensityGridIndex <- function(x, grid) {
     return(rep.int(1L, length(x)))
   }
 
+  step <- grid[[2L]] - grid[[1L]]
+  if(is.finite(step) && step != 0) {
+    idx <- floor(((x - grid[[1L]]) / step) + 0.5) + 1L
+    idx[idx < 1L] <- 1L
+    idx[idx > length(grid)] <- length(grid)
+    return(as.integer(idx))
+  }
+
   midpoints <- (grid[-1L] + grid[-length(grid)]) / 2
   as.integer(findInterval(x, vec = midpoints) + 1L)
 }
 
 prepareDensityKernel <- function(con.target) {
   n.user <- length(con.target$x)
-  n <- max(n.user, 512L)
-  if(n > 512L) {
+  n <- max(n.user, 128L)
+  if(n > 128L) {
     n <- 2^ceiling(log2(n))
   }
 
-  from <- min(con.target$x)
-  to <- max(con.target$x)
+  from <- con.target$x[[1L]]
+  to <- con.target$x[[n.user]]
   lo <- from - 4 * con.target$bw
   up <- to + 4 * con.target$bw
 
@@ -37,10 +45,8 @@ prepareDensityKernel <- function(con.target) {
   kords[(n + 2L):(2L * n)] <- -kords[n:2L]
   kords <- dnorm(kords, sd = con.target$bw)
 
-  xords <- seq.int(lo, up, length.out = n)
-  xout <- seq.int(from, to, length.out = n.user)
   step <- (up - lo) / (n - 1L)
-  interp.pos <- ((xout - lo) / step) + 1
+  interp.pos <- ((con.target$x - lo) / step) + 1
   interp.pos <- pmax.int(1, pmin.int(interp.pos, n))
   interp.left <- pmax.int(1L, pmin.int(n - 1L, floor(interp.pos)))
   interp.right <- interp.left + 1L
@@ -51,8 +57,6 @@ prepareDensityKernel <- function(con.target) {
     n = n,
     lo = lo,
     up = up,
-    xords = xords,
-    xout = xout,
     kernel_fft = Conj(fft(kords)),
     interp.left = as.integer(interp.left),
     interp.right = as.integer(interp.right),
@@ -159,6 +163,74 @@ buildDiscreteSubsetTargetMatrix <- function(discrete.sub, target.levels, strata.
   matrix.out
 }
 
+presentDiscreteValues <- function(column) {
+  if(is.factor(column)) {
+    info <- factorPresenceInfo(column)
+    if(!any(info$present)) {
+      return(character(0))
+    }
+    return(info$levels[info$present])
+  }
+
+  sort(unique(as.character(column[!is.na(column)])))
+}
+
+factorPresenceInfo <- function(column) {
+  levels.column <- levels(column)
+  codes <- unclass(column)
+  present <- rep(FALSE, length(levels.column))
+  valid <- !is.na(codes)
+
+  if(any(valid)) {
+    present <- tabulate(codes[valid], nbins = length(levels.column)) > 0L
+  }
+
+  list(
+    levels = levels.column,
+    codes = codes,
+    present = present
+  )
+}
+
+encodeDiscreteColumn <- function(column, target.levels, var, strict = FALSE) {
+  if(is.factor(column)) {
+    info <- factorPresenceInfo(column)
+    level_map <- match(info$levels, target.levels)
+
+    if(strict) {
+      present_values <- info$levels[info$present]
+      missing_in_targets <- present_values[is.na(level_map[info$present])]
+      missing_in_sample <- target.levels[!target.levels %in% present_values]
+      if(length(missing_in_targets) > 0L || length(missing_in_sample) > 0L) {
+        stop("Sample values not in targets: ", paste(missing_in_targets, collapse = ", "),
+             ". Target values not in sample: ", paste(missing_in_sample, collapse = ", "))
+      }
+    }
+
+    if(identical(info$levels, target.levels)) {
+      return(as.integer(info$codes))
+    }
+
+    codes <- info$codes
+    out <- codes
+    valid <- !is.na(codes)
+    out[valid] <- level_map[codes[valid]]
+    return(as.integer(out))
+  }
+
+  observed <- sort(unique(as.character(column[!is.na(column)])))
+  if(strict) {
+    missing_in_targets <- observed[!observed %in% target.levels]
+    missing_in_sample <- target.levels[!target.levels %in% observed]
+    if(length(missing_in_targets) > 0L || length(missing_in_sample) > 0L) {
+      stop("Sample values not in targets: ", paste(missing_in_targets, collapse = ", "),
+           ". Target values not in sample: ", paste(missing_in_sample, collapse = ", "))
+    }
+  }
+
+  as.integer(match(as.character(column), target.levels))
+}
+
 maxMeanTargetDiff <- function(sample, weights, mean.targets) {
   if(is.null(mean.targets) || length(mean.targets) == 0L) {
     return(0)
@@ -167,38 +239,6 @@ maxMeanTargetDiff <- function(sample, weights, mean.targets) {
   max(vapply(names(mean.targets), function(var) {
     abs(stats::weighted.mean(sample[[var]], weights) - mean.targets[[var]])
   }, numeric(1)))
-}
-
-.drakePreparedCache <- new.env(parent = emptyenv())
-.drakeResultCache <- new.env(parent = emptyenv())
-
-clearDrakePreparedCache <- function() {
-  rm(list = ls(.drakePreparedCache, all.names = TRUE), envir = .drakePreparedCache)
-  rm(list = ls(.drakeResultCache, all.names = TRUE), envir = .drakeResultCache)
-  invisible(NULL)
-}
-
-getCachedDrakeResult <- function(cache.key = NULL) {
-  if(is.null(cache.key) || identical(cache.key, "")) {
-    return(NULL)
-  }
-
-  key <- as.character(cache.key)[1L]
-  if(exists(key, envir = .drakeResultCache, inherits = FALSE)) {
-    return(get(key, envir = .drakeResultCache, inherits = FALSE))
-  }
-
-  NULL
-}
-
-setCachedDrakeResult <- function(cache.key = NULL, result) {
-  if(is.null(cache.key) || identical(cache.key, "")) {
-    return(invisible(result))
-  }
-
-  key <- as.character(cache.key)[1L]
-  assign(key, result, envir = .drakeResultCache)
-  invisible(result)
 }
 
 prepareDrakeInputs <- function(sample,
@@ -244,10 +284,13 @@ prepareDrakeInputs <- function(sample,
 
   initial.weights[initial.weights == 0] <- NA
 
-  sample <- sample[, unique(c(var.names.comb, var.names.discrete.sub)), drop = FALSE]
+  needed.cols <- unique(c(var.names.comb, var.names.discrete.sub))
+  sample.cols <- as.list(sample[needed.cols])
 
-  valid.cases <- complete.cases(sample[, var.names.comb, drop = FALSE]) &
-    subset & !is.na(initial.weights)
+  valid.cases <- subset & !is.na(initial.weights)
+  for(var in var.names.comb) {
+    valid.cases <- valid.cases & !is.na(sample.cols[[var]])
+  }
   valid.cases2 <- rep(TRUE, nrow(sample))
 
   for(kk in var.names.discrete.sub)   {
@@ -255,7 +298,7 @@ prepareDrakeInputs <- function(sample,
     for(strt in strata) {
       strt.parts <- names(discrete.target.subset[[kk]][[strt]])
       for(str.single in strt.parts) {
-        valid.cases2[sample[, strt] == str.single & is.na(sample[, kk])] <- FALSE
+        valid.cases2[sample.cols[[strt]] == str.single & is.na(sample.cols[[kk]])] <- FALSE
       }
     }
   }
@@ -266,12 +309,10 @@ prepareDrakeInputs <- function(sample,
   }
 
   valid.idx <- which(valid.cases)
-  sample <- sample[valid.idx, , drop = FALSE]
-  weights <- as.numeric(initial.weights[valid.idx])
-
-  for(var in discrete.names) {
-    discrete.targets <- fixDiscreteOrder(sample, var, discrete.targets)
+  for(name in names(sample.cols)) {
+    sample.cols[[name]] <- sample.cols[[name]][valid.idx]
   }
+  weights <- as.numeric(initial.weights[valid.idx])
 
   discrete.levels <- list()
   discrete.codes <- list()
@@ -283,13 +324,13 @@ prepareDrakeInputs <- function(sample,
     discrete.vars <- unique(c(discrete.vars, dts.names))
   }
 
-  if(any(!discrete.vars %in% colnames(sample))) {
+  if(any(!discrete.vars %in% names(sample.cols))) {
     stop("Discrete var targets not in data: ",
-         paste(discrete.vars[!discrete.vars %in% colnames(sample)], collapse = ";"))
+         paste(discrete.vars[!discrete.vars %in% names(sample.cols)], collapse = ";"))
   }
 
   for(var in discrete.vars) {
-    column <- sample[[var]]
+    column <- sample.cols[[var]]
 
     if(var %in% names(discrete.targets) && !is.null(names(discrete.targets[[var]]))) {
       target.levels <- names(discrete.targets[[var]])
@@ -301,10 +342,13 @@ prepareDrakeInputs <- function(sample,
       target.levels <- sort(unique(as.character(column)))
     }
 
-    column <- factor(as.character(column), levels = target.levels)
-    sample[[var]] <- column
-    discrete.levels[[var]] <- levels(column)
-    discrete.codes[[var]] <- as.integer(column)
+    discrete.levels[[var]] <- target.levels
+    discrete.codes[[var]] <- encodeDiscreteColumn(
+      column = column,
+      target.levels = target.levels,
+      var = var,
+      strict = var %in% names(discrete.targets)
+    )
   }
 
   subset.target.matrices <- list()
@@ -330,19 +374,37 @@ prepareDrakeInputs <- function(sample,
   discrete.code.list <- if(length(discrete.names) > 0L) unname(discrete.codes[discrete.names]) else list()
   discrete.target.list <- if(length(discrete.names) > 0L) unname(discrete.targets[discrete.names]) else list()
 
+  continuous.strata.vars <- unique(unlist(lapply(continuous.targets, function(target) {
+    if(inherits(target, "density")) {
+      return(character(0))
+    }
+    names(target)
+  })))
+  continuous.strata.vars <- continuous.strata.vars[!is.na(continuous.strata.vars)]
+  discrete.rows <- list()
+  for(var in continuous.strata.vars) {
+    if(!is.null(discrete.codes[[var]])) {
+      discrete.rows[[var]] <- splitRowsByCode(discrete.codes[[var]])
+    }
+  }
+
   continuous.supplement <- list()
   for(var in continuous.names) {
     continuous.supplement[[var]] <- createContinuousSupplement(
-      sample = sample,
+      sample = sample.cols,
       var = var,
-      con.target = continuous.targets[[var]]
+      con.target = continuous.targets[[var]],
+      discrete.codes = discrete.codes,
+      discrete.levels = discrete.levels,
+      discrete.rows = discrete.rows,
+      strict.discrete.vars = discrete.names
     )
   }
 
   weights <- (weights * nrow(sample)) / sum(weights)
 
   list(
-    sample = sample,
+    sample = sample.cols,
     weights_start = weights,
     selection.base.weights = weights,
     n.original = n.original,
@@ -363,44 +425,6 @@ prepareDrakeInputs <- function(sample,
     continuous.supplement = continuous.supplement,
     tot.obs = nrow(sample)
   )
-}
-
-getPreparedDrakeInputs <- function(cache.key = NULL,
-                                   sample,
-                                   continuous.targets,
-                                   discrete.targets,
-                                   discrete.target.subset,
-                                   mean.targets,
-                                   initial.weights,
-                                   subset) {
-  if(is.null(cache.key) || identical(cache.key, "")) {
-    return(prepareDrakeInputs(
-      sample = sample,
-      continuous.targets = continuous.targets,
-      discrete.targets = discrete.targets,
-      discrete.target.subset = discrete.target.subset,
-      mean.targets = mean.targets,
-      initial.weights = initial.weights,
-      subset = subset
-    ))
-  }
-
-  key <- as.character(cache.key)[1L]
-  if(exists(key, envir = .drakePreparedCache, inherits = FALSE)) {
-    return(get(key, envir = .drakePreparedCache, inherits = FALSE))
-  }
-
-  prepared <- prepareDrakeInputs(
-    sample = sample,
-    continuous.targets = continuous.targets,
-    discrete.targets = discrete.targets,
-    discrete.target.subset = discrete.target.subset,
-    mean.targets = mean.targets,
-    initial.weights = initial.weights,
-    subset = subset
-  )
-  assign(key, prepared, envir = .drakePreparedCache)
-  prepared
 }
 
 unirootSlim <- function (f, interval, lower = min(interval), upper = max(interval)) {
@@ -613,7 +637,7 @@ weightContinuousOnce <- function(data, var, con.target, dens.matches) {
   weightContinuousOnceValues(data[, var], data[, "weights"], con.target, dens.matches)
 }
 
-weightByContinuous <- function(weights = NULL, sample, var, con.target, 
+weightByContinuous <- function(weights = NULL, sample, var, con.target,
                                max.weights = max.weights, min.weights = min.weights,
                                cap.every.var, con.supp) {
   wt.init <- if(is.null(weights)) sample[, "weights"] else weights
@@ -650,7 +674,37 @@ weightByContinuous <- function(weights = NULL, sample, var, con.target,
 }
 
 
-createContinuousSupplement <- function(sample, var, con.target) {
+validateContinuousStrataLevels <- function(strat.column, target.values, strat, stratify.var) {
+  if(is.factor(strat.column)) {
+    info <- factorPresenceInfo(strat.column)
+    present.values <- info$levels[info$present]
+  } else {
+    present.values <- presentDiscreteValues(strat.column)
+  }
+
+  extra.values <- present.values[!present.values %in% target.values]
+  if(length(extra.values) > 0L) {
+    warning(paste0("For stratified draking, values in ", stratify.var, " not in targets: ",
+                   paste(extra.values, collapse = ", ")))
+  }
+
+  missing.values <- target.values[!target.values %in% present.values]
+  if(length(missing.values) > 0L) {
+    stop(paste0("For stratified draking, values in ", strat, " not in sample: ",
+                paste(missing.values, collapse = ", ")))
+  }
+}
+
+splitRowsByCode <- function(codes) {
+  rows <- which(!is.na(codes))
+  split(rows, codes[rows], drop = TRUE)
+}
+
+createContinuousSupplement <- function(sample, var, con.target,
+                                       discrete.codes = NULL,
+                                       discrete.levels = NULL,
+                                       discrete.rows = NULL,
+                                       strict.discrete.vars = character(0)) {
   x.values <- sample[[var]]
 
   if(inherits(con.target, "density")) {
@@ -670,28 +724,37 @@ createContinuousSupplement <- function(sample, var, con.target) {
     
     strat.vals <- list()
     for(strat in stratify.var) {
-      strat.vals[[strat]] <- names(con.target[[strat]])
-      strat.column <- sample[[strat]]
-      if(!all(strat.column %in% strat.vals[[strat]])) {
-        warning(paste0("For stratified draking, values in ", stratify.var, "not in targets: ",
-                       unique(strat.column[!strat.column %in% strat.vals[[strat]]])))
+      target.values <- names(con.target[[strat]])
+      target.values <- target.values[!is.na(target.values)]
+      levels.match <- !is.null(discrete.levels[[strat]]) &&
+        identical(discrete.levels[[strat]], target.values)
+      if(!(strat %in% strict.discrete.vars && levels.match)) {
+        validateContinuousStrataLevels(sample[[strat]], target.values, strat, strat)
       }
-      if(!all(strat.vals[[strat]][!is.na(strat.vals[[strat]])] %in% strat.column)) {
-        stop(paste0("For stratified draking, values in ", strat, "not in sample: ",
-                    unique(strat.vals[[strat]][!is.na(strat.vals[[strat]]) &
-                                                !strat.vals[[strat]] %in% strat.column])))
-      }
-      strat.vals[[strat]] <- strat.vals[[strat]][!is.na(strat.vals[[strat]])]
+      strat.vals[[strat]] <- target.values
     }
-    
-    # stratify.values <- names(con.target[[stratify.var]])
-    # stratify.values <- stratify.values[!is.na(stratify.values)]
-    
+
     for(strat in stratify.var) {
-      strat.column <- sample[[strat]]
-      
-      for(kk in strat.vals[[strat]] ) {
-        row.idx <- which(strat.column == kk)
+      target.values <- strat.vals[[strat]]
+      levels.match <- !is.null(discrete.levels[[strat]]) &&
+        identical(discrete.levels[[strat]], target.values)
+      if(levels.match && !is.null(discrete.rows) && !is.null(discrete.rows[[strat]])) {
+        row.lookup <- discrete.rows[[strat]]
+      } else {
+        if(levels.match && !is.null(discrete.codes) && !is.null(discrete.codes[[strat]])) {
+          strat.codes <- discrete.codes[[strat]]
+        } else {
+          strat.codes <- encodeDiscreteColumn(sample[[strat]], target.values, strat, strict = FALSE)
+        }
+        row.lookup <- splitRowsByCode(strat.codes)
+      }
+
+      for(code in seq_along(target.values)) {
+        kk <- target.values[[code]]
+        row.idx <- row.lookup[[as.character(code)]]
+        if(is.null(row.idx)) {
+          row.idx <- integer(0)
+        }
         out[[strat]][[kk]] <- list(
           rows = row.idx,
           x.values = x.values[row.idx],
